@@ -53,7 +53,7 @@ Decisions to confirm before building (they affect consent wording and layout):
 | **Attribution** | Anonymous scores; optional non-PII label (e.g., "Business A") | Full Entra ID identity per user | **Option A — Anonymous** |
 | **Storage** | Azure Cosmos DB (JSON) | Azure SQL / Table Storage (if that's your org standard) | **Option A — Cosmos DB** |
 | **Deployment** | GitHub repo → Actions → Azure Static Web Apps | Azure DevOps pipeline | **Option A — GitHub** |
-| **Region** | [TBD — align with org policy] | | **TBD** |
+| **Region** | [TBD — align with org policy] | | **East US** |
 
 ---
 
@@ -70,7 +70,7 @@ Decisions to confirm before building (they affect consent wording and layout):
 - Draft the consent line users see at the Submit step (see privacy note,
   §6).
 - Choose data residency region for the Azure resources (align with org
-  policy) — affects consent text and the approval gate. **Region still TBD — confirm with IT.**
+  policy) — affects consent text and the approval gate. **Region: East US.**
 
 ### Step 3 — Provision Azure resources
 Resource group: `rg-business-evaluator`
@@ -225,13 +225,13 @@ New files only; no change to existing rendering/scoring logic.
 - [ORG] program owner(s)/[DATA OWNER role], and Azure platform admins under
   least-privilege; aggregated dashboards to [LEADERSHIP BODY] only if
   approved for Phase 2.
-- Processed by Microsoft Cloud services: [RESION] region, list:
+- Processed by Microsoft Cloud services: **East US** region, list:
   - Phase 0: Microsoft Forms / SharePoint/Excel (fallback only).
   - Phase 1: Azure Static Web Apps, Azure Functions, Cosmos DB,
     Application Insights.
 
 ### 4. Where data lives & retention
-- Stored in [REGION] Azure regions only (no cross-border transfer beyond it).
+- Stored in **East US** Azure regions only (no cross-border transfer beyond it).
 - Retention: **24 months**, then deleted or fully anonymized.
 - Deletion process: scheduled purge + documented manual deletion path on
   request ([CONTACT]).
