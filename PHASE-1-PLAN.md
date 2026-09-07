@@ -73,7 +73,7 @@ Decisions to confirm before building (they affect consent wording and layout):
   policy) — affects consent text and the approval gate. **Region: East US.**
 
 ### Step 3 — Provision Azure resources
-Resource group: `rg-business-evaluator`
+Resource group: `rg-business-evaluator` (region: **East US**)
 - **Azure Static Web Apps** (Standard SKU for managed auth + custom domain)
   - Publish root of `business-evaluator/` (no build step needed).
 - **Azure Functions** (same SWA plan; separate `api/` endpoint or in-plan)
