@@ -1,3 +1,4 @@
 ﻿node_modules/
 .opencode/local/
 *.log
+.wrangler/

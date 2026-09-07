@@ -1,0 +1,23 @@
+// wrangler.jsonc
+// Cloudflare Workers static-assets project config (the model the Cloudflare
+// dashboard provisions for this repo: "Static Framework" Worker).
+//
+// - assets.directory: the static site lives in public/ (index.html, css/, js/),
+//   so node_modules and source folders never enter the asset bundle.
+// - main: functions/ is compiled once into dist/worker/index.js via
+//   `npm run build:worker` and the result is committed, so `wrangler deploy`
+//   needs no extra build step. Rebuild after editing functions/.
+// - KV: the SUBMISSIONS_KV binding is configured in the dashboard (Settings ->
+//   Bindings -> KV namespace). A bindings id placeholder here would fail deploys.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "business-evaluator",
+  "main": "dist/worker/index.js",
+  "compatibility_date": "2026-09-07",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "public"
+  }
+}

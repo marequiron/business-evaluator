@@ -1,16 +1,19 @@
 /**
  * functions/api/submit.js
- * Cloudflare Pages Function: POST /api/submit
+ * Cloudflare Function: POST /api/submit
  *
  * Receives a submitted evaluation, validates it, stamps it, and persists it
  * to a Cloudflare KV namespace. Implements the same contract + failure
  * behaviour as the original Azure handler (see api/src/handler.js), but is
  * self-contained for Cloudflare Workers (ES module, no Node build step).
  *
+ * Compiled into the deployed Worker bundle (dist/worker/index.js) via
+ * `npm run build:worker` — rebuild and commit after editing here.
+ *
  * Storage is delegated to a KV binding named SUBMISSIONS_KV, configured in
- * the Cloudflare dashboard (Pages project -> Settings -> Functions -> KV
- * namespace bindings). When the binding is absent (local dev without config),
- * it falls back to log-and-ack so submissions are never silently dropped.
+ * the Cloudflare dashboard (Worker project -> Settings -> Bindings -> KV).
+ * When the binding is absent (local dev without config), it falls back to
+ * log-and-ack so submissions are never silently dropped.
  */
 
 const MAX_BODY_BYTES = 10 * 1024; // 10 KB

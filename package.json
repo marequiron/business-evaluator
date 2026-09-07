@@ -5,7 +5,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "npx --yes serve .",
-    "test": "node test/submit-cf.test.mjs"
+    "start": "npx --yes serve public",
+    "test": "node test/submit-cf.test.mjs && node test/compiled-worker.test.mjs",
+    "build:worker": "wrangler pages functions build --outdir dist/worker"
+  },
+  "devDependencies": {
+    "wrangler": "^4.129.1"
   }
 }

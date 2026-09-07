@@ -1,6 +1,6 @@
 # Phase 1 Plan — Corporate Rollout of the Business Self-Evaluation Tool
 
-**Status:** Steps 1-2 complete. Repo on GitHub (`marequiron/business-evaluator`). **Hosting pivoted from Azure to Cloudflare Pages + Functions + KV.** Code is ready; requires dashboard setup (see `CLOUDFLARE-SETUP.md`).
+**Status:** Steps 1-2 complete. Repo on GitHub (`marequiron/business-evaluator`). **Hosting: Cloudflare Workers (static assets + Function) + KV.** Code ready and deploy config fixed (deploy now passes dry-run; node_modules excluded from assets). Requires only dashboard setup + live verification (see `CLOUDFLARE-SETUP.md`).
 **Owner:** marequiron
 **Target date:** [to fill]
 
@@ -33,15 +33,16 @@ collect results reliably, attribute them (optional), and later benchmark.
   User browser (index.html, unchanged UI)
         │  answers → localStorage + scoring (client-side, as today)
         ▼
-  Submit results
+Submit results
         ├─ (fallback, kept) Microsoft Form       …for small/unattended use
-        └─ (primary, new)   HTTPS POST ──► Cloudflare Pages
-                                              │  functions/api/submit.js
-                                              ▼
-                                   Cloudflare KV (SUBMISSIONS_KV namespace)
-                                              │
-                                              ▼
-                                   Aggregation views → later (Phase 2)
+        └─ (primary, new)   HTTPS POST ──► Cloudflare Workers
+                                               │  functions/api/submit.js
+                                               │  → compiled dist/worker/index.js
+                                               ▼
+                                    Cloudflare KV (SUBMISSIONS_KV namespace)
+                                               │
+                                               ▼
+                                    Aggregation views → later (Phase 2)
 ```
 
 Decisions to confirm before building (they affect consent wording and layout):
@@ -50,7 +51,7 @@ Decisions to confirm before building (they affect consent wording and layout):
 |---|---|---|---|
 | **Attribution** | Anonymous scores; optional non-PII label (e.g., "Business A") | Named identity per user | **Option A — Anonymous** |
 | **Storage** | Cloudflare KV (JSON) | Durable Objects / external DB (Postgres) | **Option A — KV** |
-| **Deployment** | GitHub repo → Cloudflare Pages (Git integration) | Manual upload | **Option A — GitHub/Git** |
+| **Deployment** | GitHub repo → Cloudflare (Git integration) | Manual upload | **Option A — GitHub/Git** |
 | **Hosting region (Cloudflare)** | Anycast edge (global) | — | **Cloudflare global edge** |
 
 ---
@@ -67,16 +68,20 @@ Decisions to confirm before building (they affect consent wording and layout):
 - Fill in the **Decision table** above.
 - Draft the consent line users see at the Submit step (see privacy note,
   §6).
-- Choose data residency region for the Azure resources (align with org
-  policy) — affects consent text and the approval gate. **Region: East US.**
+- Choose data residency stance on Cloudflare's global edge (align with org
+  policy) — affects consent text and the approval gate. **Cloudflare global
+  edge (anycast).**
 
 ### Step 3 — Provision Cloudflare resources (dashboard)
-> **Status: code ready, dashboard pending** — see `CLOUDFLARE-SETUP.md` for click-by-click steps.
+> **Status: code + deploy config done; dashboard pending** — see `CLOUDFLARE-SETUP.md` for click-by-click steps.
 - **Cloudflare account** (free tier is sufficient): connect the GitHub repo at
-  https://dash.cloudflare.com → **Workers & Pages** → **Create** → **Pages** → Connect to Git.
-- **Pages project** — publish repo root as-is (no build step, output dir `/`).
-- **KV namespace** `SUBMISSIONS` → bind to the Pages project as `SUBMISSIONS_KV`
-  (under **Pages → Settings → Functions → KV namespace bindings**).
+  https://dash.cloudflare.com → **Workers & Pages** → the `business-evaluator`
+  Worker project (connected to GitHub; deploys with `npx wrangler deploy`).
+- **Worker project** — `wrangler.jsonc` (committed) points static assets at
+  `public/` and runs the compiled `dist/worker/index.js` (built from
+  `functions/` via `npm run build:worker`). No build command needed on push.
+- **KV namespace** `SUBMISSIONS` → bind to the Worker project as `SUBMISSIONS_KV`
+  (under **Worker → Settings → Bindings**).
 
 ### Step 4 — Access control (optional)
 - For an internal tool, gate who can reach the app with **Cloudflare Access**
@@ -86,13 +91,14 @@ Decisions to confirm before building (they affect consent wording and layout):
   Cloudflare Access layer instead of in code.
 
 ### Step 5 — Build the submit API
-> **Status: done — ported to Cloudflare Pages Function.** `functions/api/submit.js`
-> is a self-contained ES module (no npm install needed). 11 unit tests pass
-> (`npm test`). The original Azure `api/` code is kept intact as reference and
-> fallback but is NOT deployed.
+> **Status: done — Cloudflare Function.** `functions/api/submit.js` is a
+> self-contained ES module, compiled to `dist/worker/index.js` (committed) via
+> `npm run build:worker`. 14 tests pass (`npm test`): 11 function unit tests +
+> 3 smoke tests against the compiled bundle. The original Azure `api/` code is
+> kept intact as reference and fallback but is NOT deployed.
 
 Implementation:
-- `functions/api/submit.js` — Cloudflare Pages Function for `POST /api/submit`:
+- `functions/api/submit.js` — Cloudflare Function for `POST /api/submit`:
   1. Rejects: empty body (400), invalid JSON (400), oversized >10 KB (413),
      wrong shape per `validateSubmit` (400), `REQUIRE_AUTH=true` (403),
      non-POST (405).
@@ -101,18 +107,19 @@ Implementation:
      key `submissionId`. Without a KV binding: dev env logs-and-acks
      (`stored:false`); otherwise returns 500 so nothing is silently dropped.
 - Binding: `SUBMISSIONS_KV` is configured in the Cloudflare dashboard
-  (Pages project → Settings → Functions → KV namespace bindings), not in a
-  repo file. For local `wrangler pages dev`, pass `--binding SUBMISSIONS_KV=<id>`.
-- Tests: `test/submit-cf.test.mjs` — 11 checks in plain Node (built-ins only).
+  (Worker project → Settings → Bindings → KV namespace), not in a repo file.
+  For local `wrangler dev`, pass `--kv SUBMISSIONS_KV=<id>`.
+- Tests: `test/submit-cf.test.mjs` (11 unit checks) + `test/compiled-worker.test.mjs`
+  (3 bundle smoke tests) in plain Node (built-ins only).
 - `CLOUDFLARE-SETUP.md` — step-by-step dashboard guide + verification steps.
 
 ### Step 6 — Wire the app's Submit button
 > **Status: done.** `SUBMIT_FORM.apiUrl` is set to a **relative** endpoint so it
-> works in every Pages deployment (prod + preview).
+> works in every Cloudflare deployment (prod + preview).
 
 - In `js/data.js`:
   ```js
-  apiUrl: "/api/submit"   // Cloudflare Pages Function on the same domain
+  apiUrl: "/api/submit"   // Cloudflare Function on the same domain
   ```
 - In `js/app.js`, `submitResults()` order of attempts:
   1. If `apiUrl` set → `fetch(apiUrl, {method:"POST", body})`; on success show
@@ -139,20 +146,20 @@ Implementation:
 - Align with org scanners; keep secrets out of the repo.
 
 ### Step 8 — Staging + CI/CD
-- Repo: `business-evaluator` on GitHub; Cloudflare Pages **Git integration**
-  auto-builds on every push to `main` (green = PR preview, blue = production).
-- Pipeline: push `main` → Cloudflare runs tests? — currently Cloudflare builds
-  and deploys without running our test suite. **Recommended:** the local
-  workflow (`npm test` at root for the Cloudflare function) is run by the
-  existing GitHub Actions workflow `deploy-azure-static-web-apps.yml`; see note on
-  keeping tests wired in CI.
+- Repo: `business-evaluator` on GitHub; Cloudflare **Git integration**
+  auto-deploys on every push to `main`.
+- Pipeline: push `main` → Cloudflare runs `npx wrangler deploy` (uses the
+  committed `wrangler.jsonc`, `public/` assets, compiled `dist/worker/index.js`).
+  Our test suite runs in GitHub Actions (`.github/workflows/ci.yml`:
+  `node --check` + `npm test` + a parity check that the committed Worker
+  bundle matches `functions/`).
 - Environments: Cloudflare gives each PR a **preview URL** automatically;
   `main` is **production**. No separate staging infra needed.
 - Tagged releases only reach prod if you gate the Pages project's production
   branch (Settings → Builds & deployments → Production branch = `main`).
 
 ### Step 9 — Monitoring & operations
-- Cloudflare Pages/Workers analytics: watch failed submits; alert on >5 in
+- Cloudflare Workers analytics: watch failed submits; alert on >5 in
   10 min (Workers logs + email/Webhook).
 - Backups: KV is highly available with Cloudflare's edge storage; export
   snapshots periodically if long-term retention is needed.
@@ -215,7 +222,7 @@ Implementation:
   only if approved for Phase 2.
 - Processed by Cloudflare services (global edge network), list:
   - Phase 0: Microsoft Forms / SharePoint/Excel (fallback only).
-  - Phase 1: Cloudflare Pages, Cloudflare Functions, Cloudflare KV.
+  - Phase 1: Cloudflare Workers, Cloudflare Functions, Cloudflare KV.
 
 ### 4. Where data lives & retention
 - Stored in Cloudflare KV (data replicated across Cloudflare's global edge;
@@ -262,9 +269,9 @@ Implementation:
 
 ## Next actions
 1. Fill the `[ ]` placeholders (owner, retention, contacts, reviewer roles).
-2. **Do the Cloudflare dashboard setup in `CLOUDFLARE-SETUP.md`** — connect
-   the GitHub repo as a Pages project, create the `SUBMISSIONS` KV namespace,
-   and bind it as `SUBMISSIONS_KV`. Then verify `/api/submit` returns 202.
+2. **Do the Cloudflare dashboard setup in `CLOUDFLARE-SETUP.md`** — confirm the
+   repo is connected to Cloudflare, create the `SUBMISSIONS` KV namespace, and
+   bind it to the Worker as `SUBMISSIONS_KV`. Then verify `/api/submit` returns 202.
 3. Decide organisation data-residency stance on Cloudflare's global edge (for
    §4 of Part 2) — affects the approval gate.
 4. Submit §Part-2 note with the Phase 1 steps for the approval gate.

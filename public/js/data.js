@@ -25,8 +25,8 @@ const SCORE_BANDS = {
 /*
  * SUBMIT_FORM — where "Submit results" sends the evaluation.
  * Content only (no logic):
- *  - apiUrl: OPTIONAL (Phase 1). POST endpoint for the Azure Functions API,
- *    e.g. "https://<app>.azurestaticapps.net/api/submit". When set, the app
+ *  - apiUrl: OPTIONAL (Phase 1). POST endpoint for the Cloudflare Function,
+ *    e.g. "/api/submit". When set, the app
  *    posts the structured evaluation (language + 7 category scores/bands) and
  *    falls back to the form methods below only if the request fails.
  *  - embedUrl: OPTIONAL. The iframe src from Microsoft Forms → Share → Embed,
