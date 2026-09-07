@@ -1,7 +1,7 @@
 # Phase 1 Plan — Corporate Rollout of the Business Self-Evaluation Tool
 
-**Status:** In progress — Steps 1-2 complete, Step 3 pending Azure resources
-**Owner:** [to fill — app owner / program lead]
+**Status:** Steps 1-2 complete. Repo on GitHub (`marequiron/business-evaluator`). CI/CD workflow in place. Step 3 partially done — Azure resources not yet created.
+**Owner:** marequiron
 **Target date:** [to fill]
 
 This document is the step-by-step plan to take the app from the Phase 0
