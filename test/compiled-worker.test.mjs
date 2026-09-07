@@ -81,6 +81,19 @@ function makeEnvelope(bodyText, opts) {
     assert.strictEqual(res.status, 403);
   });
 
+  await test('compiled bundle: static assets carry Cache-Control: no-store', async () => {
+    const indexHtml = '<!DOCTYPE html><title>Business Self-Evaluation Tool</title>';
+    const env = {
+      ENVIRONMENT: 'production',
+      ASSETS: { fetch: async () => new Response(indexHtml, { status: 200, headers: { 'Content-Type': 'text/html' } }) },
+    };
+    const ctx = { waitUntil: () => {} };
+    const res = await worker.fetch(new Request('https://example.com/index.html'), env, ctx);
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.headers.get('Cache-Control'), 'no-store');
+    assert.strictEqual(res.headers.get('Content-Type'), 'text/html');
+  });
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })();

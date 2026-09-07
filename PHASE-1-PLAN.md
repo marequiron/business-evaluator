@@ -162,6 +162,9 @@ Implementation:
   trigger or daily 04:17 UTC) — asserts the site serves 200 and
   `POST /api/submit` returns 202 `stored:true`. Smoke submissions are labeled
   `pipeline-smoke <ts>` so they can be purged from KV.
+- Cache: `functions/_middleware.js` + `assets.run_worker_first` stamp every
+  response with `Cache-Control: no-store`, so edge stale-cache (which cannot
+  be purged on a bare workers.dev domain) never pins an old site version.
 - Environments: Cloudflare gives each PR a **preview URL** automatically;
   `main` is **production**. No separate staging infra needed.
 - Tagged releases only reach prod if you gate the Pages project's production

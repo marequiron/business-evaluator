@@ -124,6 +124,7 @@ business-evaluator/
 │   ├── css/
 │   └── js/
 ├── functions/
+│   ├── _middleware.js   # adds Cache-Control: no-store to every response
 │   └── api/
 │       └── submit.js       # POST /api/submit (source of the Worker)
 ├── dist/worker/index.js    # compiled Worker (committed; run by wrangler deploy)

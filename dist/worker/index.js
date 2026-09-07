@@ -116,7 +116,22 @@ async function onRequestPost(context) {
 }
 __name(onRequestPost, "onRequestPost");
 
-// ../.wrangler/tmp/pages-sCNQTU/functionsRoutes-0.1240879444904387.mjs
+// _middleware.js
+var NO_BODY_STATUS = /* @__PURE__ */ new Set([101, 204, 205, 304]);
+async function onRequest(context) {
+  const response = await context.next();
+  if (!response || !(response instanceof Response)) return response;
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", "no-store");
+  return new Response(NO_BODY_STATUS.has(response.status) ? null : response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+__name(onRequest, "onRequest");
+
+// ../.wrangler/tmp/pages-NzqC11/functionsRoutes-0.4317127232275366.mjs
 var routes = [
   {
     routePath: "/api/submit",
@@ -124,6 +139,13 @@ var routes = [
     method: "POST",
     middlewares: [],
     modules: [onRequestPost]
+  },
+  {
+    routePath: "/",
+    mountPath: "/",
+    method: "",
+    middlewares: [onRequest],
+    modules: []
   }
 ];
 

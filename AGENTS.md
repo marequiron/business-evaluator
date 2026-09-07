@@ -24,6 +24,9 @@ an optional submission API (Cloudflare) — see `PHASE-1-PLAN.md`.
 - `functions/api/submit.js` — the deployed submission API (Cloudflare
   Function, group-internal approval-pending). Validates and stores submitted
   evaluations in Cloudflare KV.
+- `functions/_middleware.js` — Worker-wide middleware adding
+  `Cache-Control: no-store` to every response (with `run_worker_first: true`
+  in wrangler.jsonc) so Cloudflare's edge never caches stale site assets.
 - `dist/worker/index.js` — the compiled Worker bundle that Cloudflare runs.
   Generated from `functions/` via `npm run build:worker`; **the committed
   bundle must be kept in sync** — CI enforces `git diff --exit-code`.
