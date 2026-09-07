@@ -1,6 +1,6 @@
 # Phase 1 Plan — Corporate Rollout of the Business Self-Evaluation Tool
 
-**Status:** Draft for review
+**Status:** In progress — Steps 1-2 complete, Step 3 pending Azure resources
 **Owner:** [to fill — app owner / program lead]
 **Target date:** [to fill]
 
@@ -48,28 +48,29 @@ collect results reliably, attribute them (optional), and later benchmark.
 
 Decisions to confirm before building (they affect consent wording and layout):
 
-| Decision | Option A (recommended start) | Option B |
-|---|---|---|
-| **Attribution** | Anonymous scores; optional non-PII label (e.g., "Business A") | Full Entra ID identity per user |
-| **Storage** | Azure Cosmos DB (JSON) | Azure SQL / Table Storage (if that's your org standard) |
-| **Deployment** | GitHub repo → Actions → Azure Static Web Apps | Azure DevOps pipeline |
+| Decision | Option A (recommended start) | Option B | **CHOSEN** |
+|---|---|---|---|
+| **Attribution** | Anonymous scores; optional non-PII label (e.g., "Business A") | Full Entra ID identity per user | **Option A — Anonymous** |
+| **Storage** | Azure Cosmos DB (JSON) | Azure SQL / Table Storage (if that's your org standard) | **Option A — Cosmos DB** |
+| **Deployment** | GitHub repo → Actions → Azure Static Web Apps | Azure DevOps pipeline | **Option A — GitHub** |
+| **Region** | [TBD — align with org policy] | | **TBD** |
 
 ---
 
 ## 2. Implementation steps
 
-### Step 1 — Freeze the Phase 0 baseline
+### Step 1 — Freeze the Phase 0 baseline ✅
 - Tag the current folder state (git commit + tag `v1.0-phase0`).
 - Lock `SUBMIT_FORM` config as the fallback path.
 - Agree scope for this phase (no question-content changes; those stay in
   `js/data.js` and are decoupled from rollout).
 
-### Step 2 — Decide the data model & privacy defaults
+### Step 2 — Decide the data model & privacy defaults ✅
 - Fill in the **Decision table** above.
 - Draft the consent line users see at the Submit step (see privacy note,
   §6).
 - Choose data residency region for the Azure resources (align with org
-  policy) — affects consent text and the approval gate.
+  policy) — affects consent text and the approval gate. **Region still TBD — confirm with IT.**
 
 ### Step 3 — Provision Azure resources
 Resource group: `rg-business-evaluator`
