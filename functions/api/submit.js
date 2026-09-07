@@ -134,13 +134,11 @@ export async function onRequestPost(context) {
 
   const kv = env.SUBMISSIONS_KV;
   if (kv) {
-    const storeResult = await kv.put(submission.submissionId, JSON.stringify(submission));
-    if (storeResult !== undefined) {
-      waitUntil(kv.put(`${submission.submissionId}:meta`, JSON.stringify({
-        submittedAt: submission.submittedAt,
-        language: submission.language,
-      })));
-    }
+    await kv.put(submission.submissionId, JSON.stringify(submission));
+    waitUntil(kv.put(`${submission.submissionId}:meta`, JSON.stringify({
+      submittedAt: submission.submittedAt,
+      language: submission.language,
+    })));
   } else if (env.DEV_NO_STORE === 'true' || env.ENVIRONMENT === 'development') {
     console.log('[dev] submission not persisted:', submission.submissionId);
   } else {

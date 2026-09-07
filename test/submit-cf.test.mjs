@@ -78,6 +78,11 @@ const CATEGORY_IDS_7 = CATEGORY_IDS;
     assert.ok(record, 'main submission record should be stored under its id');
     assert.strictEqual(record.val.schemaVersion, 1);
     assert.ok(record.val.submittedAt);
+
+    const meta = stored.find((s) => s.key === body.id + ':meta');
+    assert.ok(meta, 'meta record should be written alongside the submission');
+    assert.strictEqual(meta.val.language, 'simple');
+    assert.ok(meta.val.submittedAt);
   });
 
   await test('strict validation: accepts unanswered (null score)', async () => {
