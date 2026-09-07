@@ -61,7 +61,10 @@ or use the VS Code "Live Server" extension pointed at `public/`.
   replace it.
 - Change the submission target → edit `SUBMIT_FORM` in `public/js/data.js`:
   `apiUrl` (Cloudflare API), `formUrl` + optional `prefillTemplate` (Microsoft
-  Form fallback). The submit flow lives in `submitResults()` in
+  Form fallback), and `consentText` (the consent gate shown by
+  `setupConsentGate()` in app.js — Submit stays disabled until the checkbox is
+  ticked; empty text disables the gate). Replace `[ORG]` in consent text with
+  the real org name. The submit flow lives in `submitResults()` in
   `public/js/app.js` (`buildSubmissionPayload()` builds the API body). Order
   of attempts: API first (on success/failure), then prefill, then clipboard +
   form. The front end stays static — no server added there.

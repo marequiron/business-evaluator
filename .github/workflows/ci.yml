@@ -17,6 +17,9 @@ jobs:
       - name: Syntax-check front-end JS
         run: node --check public/js/app.js && node --check public/js/data.js
 
+      - name: Check consent gate wiring
+        run: node .github/scripts/check-consent-wiring.mjs
+
       - name: Run Cloudflare function tests
         run: |
           node --check functions/api/submit.js

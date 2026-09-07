@@ -45,13 +45,18 @@ const SCORE_BANDS = {
  *    (params starting with "r") with the full results text, so the form opens
  *    already pre-filled. The prefill link is offered as a shortcut alongside
  *    the embedded form when embedUrl is also configured.
+ *  - consentText: OPTIONAL. Shown on the Submit screen next to a checkbox that
+ *    must be ticked before "Submit results" is enabled. Replace "[ORG]" with
+ *    your organization's name. Leave empty to skip the consent gate entirely.
  * Leave all fields empty to keep the copy-only behaviour.
  */
 const SUBMIT_FORM = {
   apiUrl: "/api/submit",
   embedUrl: "",
   formUrl: "",
-  prefillTemplate: ""
+  prefillTemplate: "",
+  consentText:
+    "By submitting, you agree that [ORG] stores your anonymous results for 24 months to support benchmarking and improvement."
 };
 
 const CATEGORIES = [

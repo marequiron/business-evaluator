@@ -482,7 +482,21 @@ document.addEventListener("DOMContentLoaded", () => {
   renderForm();
   document.getElementById("toggle-btn").addEventListener("click", toggleMode);
   document.getElementById("evaluate-btn").addEventListener("click", renderResults);
-  document.getElementById("submit-btn").addEventListener("click", submitResults);
+  const submitBtn = document.getElementById("submit-btn");
+  submitBtn.addEventListener("click", submitResults);
   document.getElementById("export-btn").addEventListener("click", exportResults);
   document.getElementById("reset-btn").addEventListener("click", resetAll);
+  setupConsentGate(submitBtn);
 });
+
+function setupConsentGate(submitBtn) {
+  const consentText = (SUBMIT_FORM && SUBMIT_FORM.consentText) || "";
+  if (!consentText) return;
+  const block = document.getElementById("consent-block");
+  document.getElementById("consent-text").textContent = consentText;
+  block.hidden = false;
+  submitBtn.disabled = true;
+  document.getElementById("consent-checkbox").addEventListener("change", (e) => {
+    submitBtn.disabled = !e.target.checked;
+  });
+}

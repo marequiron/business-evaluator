@@ -132,6 +132,10 @@ Implementation:
   Cloudflare function's `validateSubmit`.
 - Keep the Microsoft Form path intact as the offline/unattended fallback
   (per the project's "do not remove existing capability" rule).
+- **Consent gate (done):** a checkbox gating the Submit button, shown with the
+  consent line `SUBMIT_FORM.consentText` in `public/js/data.js` ("By submitting,
+  you agree that [ORG] stores your anonymous results for 24 months…"). Submit
+  stays disabled until ticked; replace `[ORG]` with the org name.
 
 ### Step 7 — Security & compliance controls
 - HTTPS everywhere (Cloudflare default). Site-level gate via Cloudflare Access
