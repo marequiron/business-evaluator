@@ -1,0 +1,9 @@
+{
+  "name": "business-evaluator",
+  "version": "1.0.0",
+  "description": "Static web app: business self-evaluation tool (Strengths/Weaknesses/Opportunities/Recommendations)",
+  "private": true,
+  "scripts": {
+    "start": "npx --yes serve ."
+  }
+}

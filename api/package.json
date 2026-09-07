@@ -1,0 +1,15 @@
+{
+  "name": "business-evaluator-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Azure Functions API that receives submitted evaluations for the Business Self-Evaluation Tool (Phase 1).",
+  "main": "src/functions/*.js",
+  "scripts": {
+    "start": "func start",
+    "test": "node test/submit.test.js"
+  },
+  "dependencies": {
+    "@azure/cosmos": "^4.1.1",
+    "@azure/functions": "^4.5.0"
+  }
+}

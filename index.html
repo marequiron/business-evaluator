@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Business Self-Evaluation Tool</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Business Self-Evaluation Tool</h1>
+    <p>Answer 1-5 rating questions across 7 categories to reveal your business's
+      strengths, weaknesses, and opportunities — with tailored recommendations.</p>
+    <div class="mode-toggle">
+      <button id="toggle-btn" type="button" class="secondary">Use simple language</button>
+    </div>
+  </header>
+
+  <main>
+    <form id="assessment-form" autocomplete="off"></form>
+
+    <div class="actions">
+      <button id="evaluate-btn" type="button">Evaluate My Business</button>
+      <button id="submit-btn" type="button" class="secondary">📤 Submit results</button>
+      <button id="export-btn" type="button" class="secondary">Export Results</button>
+      <button id="reset-btn" type="button" class="danger">Reset</button>
+    </div>
+
+    <section id="results"></section>
+    <section id="embed-container"></section>
+  </main>
+
+  <footer>
+    <p>Everything runs in your browser — no data leaves your machine.</p>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
