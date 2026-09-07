@@ -48,7 +48,7 @@ const SCORE_BANDS = {
  * Leave all fields empty to keep the copy-only behaviour.
  */
 const SUBMIT_FORM = {
-  apiUrl: "",
+  apiUrl: "/api/submit",
   embedUrl: "",
   formUrl: "",
   prefillTemplate: ""

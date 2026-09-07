@@ -1,6 +1,6 @@
 # Phase 1 Plan — Corporate Rollout of the Business Self-Evaluation Tool
 
-**Status:** Steps 1-2 complete. Repo on GitHub (`marequiron/business-evaluator`). CI/CD workflow in place. Step 3 partially done — Azure resources not yet created.
+**Status:** Steps 1-2 complete. Repo on GitHub (`marequiron/business-evaluator`). **Hosting pivoted from Azure to Cloudflare Pages + Functions + KV.** Code is ready; requires dashboard setup (see `CLOUDFLARE-SETUP.md`).
 **Owner:** marequiron
 **Target date:** [to fill]
 
@@ -35,25 +35,23 @@ collect results reliably, attribute them (optional), and later benchmark.
         ▼
   Submit results
         ├─ (fallback, kept) Microsoft Form       …for small/unattended use
-        └─ (primary, new)   HTTPS POST ──► Azure Static Web Apps
-                                              │  auth callback (Entra ID)
+        └─ (primary, new)   HTTPS POST ──► Cloudflare Pages
+                                              │  functions/api/submit.js
                                               ▼
-                                   Azure Functions API  (validate + store)
-                                              ▼
-                                   Azure Cosmos DB / SQL  (or Table Storage)
+                                   Cloudflare KV (SUBMISSIONS_KV namespace)
                                               │
                                               ▼
-                                   Aggregation views → later Power BI (Phase 2)
+                                   Aggregation views → later (Phase 2)
 ```
 
 Decisions to confirm before building (they affect consent wording and layout):
 
 | Decision | Option A (recommended start) | Option B | **CHOSEN** |
 |---|---|---|---|
-| **Attribution** | Anonymous scores; optional non-PII label (e.g., "Business A") | Full Entra ID identity per user | **Option A — Anonymous** |
-| **Storage** | Azure Cosmos DB (JSON) | Azure SQL / Table Storage (if that's your org standard) | **Option A — Cosmos DB** |
-| **Deployment** | GitHub repo → Actions → Azure Static Web Apps | Azure DevOps pipeline | **Option A — GitHub** |
-| **Region** | [TBD — align with org policy] | | **East US** |
+| **Attribution** | Anonymous scores; optional non-PII label (e.g., "Business A") | Named identity per user | **Option A — Anonymous** |
+| **Storage** | Cloudflare KV (JSON) | Durable Objects / external DB (Postgres) | **Option A — KV** |
+| **Deployment** | GitHub repo → Cloudflare Pages (Git integration) | Manual upload | **Option A — GitHub/Git** |
+| **Hosting region (Cloudflare)** | Anycast edge (global) | — | **Cloudflare global edge** |
 
 ---
 
@@ -72,105 +70,94 @@ Decisions to confirm before building (they affect consent wording and layout):
 - Choose data residency region for the Azure resources (align with org
   policy) — affects consent text and the approval gate. **Region: East US.**
 
-### Step 3 — Provision Azure resources
-Resource group: `rg-business-evaluator` (region: **East US**)
-- **Azure Static Web Apps** (Standard SKU for managed auth + custom domain)
-  - Publish root of `business-evaluator/` (no build step needed).
-- **Azure Functions** (same SWA plan; separate `api/` endpoint or in-plan)
-  - Endpoint: `POST /api/submit`
-- **Data store:** Azure Cosmos DB (serverless), container `submissions`
-  (or SQL/Table if chosen).
-- **Application Insights** (telemetry; no PII in logs).
+### Step 3 — Provision Cloudflare resources (dashboard)
+> **Status: code ready, dashboard pending** — see `CLOUDFLARE-SETUP.md` for click-by-click steps.
+- **Cloudflare account** (free tier is sufficient): connect the GitHub repo at
+  https://dash.cloudflare.com → **Workers & Pages** → **Create** → **Pages** → Connect to Git.
+- **Pages project** — publish repo root as-is (no build step, output dir `/`).
+- **KV namespace** `SUBMISSIONS` → bind to the Pages project as `SUBMISSIONS_KV`
+  (under **Pages → Settings → Functions → KV namespace bindings**).
 
-### Step 4 — Enable Entra ID (Microsoft Entra) authentication (SWA managed)
-- Register the SWA app; enable **"Managed identities for authenticated
-  users"** (AKA authenticate by access tokens / invoke functions).
-- Define one app role **"Business-Evaluator Submitters"**; assign to the
-  target user group rather than individuals where possible.
-- If Option A (anonymous) chosen: make sign-in *optional but encouraged* —
-  gating access to corporate members while keeping scores unnamed.
+### Step 4 — Access control (optional)
+- For an internal tool, gate who can reach the app with **Cloudflare Access**
+  (page-level allow/deny, no code change needed).
+- The submit function supports a `REQUIRE_AUTH` env var (returns 403 when set to
+  `true`) as a coarse kill-switch. Real identity/per-user gating is done at the
+  Cloudflare Access layer instead of in code.
 
 ### Step 5 — Build the submit API
-> **Status: scaffolded.** Working, tested code exists under `api/` — deploy and
-> run `npm install` + `npm test` there. Remaining: standing up the real Azure
-> resources and wiring the env vars.
+> **Status: done — ported to Cloudflare Pages Function.** `functions/api/submit.js`
+> is a self-contained ES module (no npm install needed). 11 unit tests pass
+> (`npm test`). The original Azure `api/` code is kept intact as reference and
+> fallback but is NOT deployed.
 
-New files only; no change to existing rendering/scoring logic.
-- `api/` (Azure Functions, Node v4 `@azure/functions`, trigger `POST /api/submit`):
-  1. `api/src/validate.js` — payload shape (exactly 7 categories, scores 0–5,
-     bands `weakness|opportunity|strength|unanswered`, language
-     `simple|standard`), plus size cap (10 KB) and field checks. Pure and
-     dependency-free.
-  2. `api/src/handler.js` — framework-agnostic request handling: 400 empty/
-     invalid-JSON/bad-shape, 413 oversized, 403 when `REQUIRE_AUTH=true` and
-     the caller lacks `SUBMITTER_ROLE`, 202 for good submissions. Stamps
-     `submissionId`, `submittedAt`, `schemaVersion: 1`.
-  3. `api/src/store.js` — Cosmos DB persistence (`@azure/cosmos`); honors
-     `COSMOS_CONNECTION_STRING` or `COSMOS_ENDPOINT`+`COSMOS_KEY`,
-     `COSMOS_DATABASE` (default `business-evaluator`), `COSMOS_CONTAINER`
-     (default `submissions`). `DEV_NO_STORE=true` (or Functions dev env) logs
-     and returns without storing; otherwise storage failure raises and the
-     handler returns 500 so nothing is silently dropped.
-  4. `api/src/functions/submit.js` — thin `app.http('submit', ...)` adapter:
-     decodes the SWA `x-ms-client-principal` header into the handler's
-     `principal`. Function `authLevel` is `anonymous` — access control lives
-     in the SWA layer + the handler's role gate.
-- Env vars reference (also in `api/local.settings.json.example`):
-  `COSMOS_CONNECTION_STRING` | `COSMOS_ENDPOINT`+`COSMOS_KEY`,
-  `COSMOS_DATABASE`, `COSMOS_CONTAINER`, `REQUIRE_AUTH`, `SUBMITTER_ROLE`,
-  `DEV_NO_STORE`.
-- Tests: `api/test/submit.test.js` runs in plain Node (`npm test` in `api/`,
-  no install needed) — 17 checks covering validation, auth, store failure,
-  and Cosmos-config states.
-- Function auth (deployed): require the SWA-issued access token (managed
-  identity); do **not** accept anonymous function-level calls except during a
-  reviewed pilot window.
+Implementation:
+- `functions/api/submit.js` — Cloudflare Pages Function for `POST /api/submit`:
+  1. Rejects: empty body (400), invalid JSON (400), oversized >10 KB (413),
+     wrong shape per `validateSubmit` (400), `REQUIRE_AUTH=true` (403),
+     non-POST (405).
+  2. Accepts (202): stamps `submissionId`, `submittedAt`, `schemaVersion: 1`.
+  3. Storage: writes the submission JSON to the `SUBMISSIONS_KV` binding under
+     key `submissionId`. Without a KV binding: dev env logs-and-acks
+     (`stored:false`); otherwise returns 500 so nothing is silently dropped.
+- `wrangler.toml` — documents the `SUBMISSIONS_KV` binding (replace the
+  namespace id) and Pages output dir for local dev (`npx wrangler pages dev .`).
+- Tests: `test/submit-cf.test.mjs` — 11 checks in plain Node (built-ins only).
+- `CLOUDFLARE-SETUP.md` — step-by-step dashboard guide + verification steps.
 
 ### Step 6 — Wire the app's Submit button
-> **Status: done** (front-end fully wired and smoke-tested). Only the real
-> `apiUrl` value and any auth header option remain.
+> **Status: done.** `SUBMIT_FORM.apiUrl` is set to a **relative** endpoint so it
+> works in every Pages deployment (prod + preview).
 
-- In `js/data.js` add to `SUBMIT_FORM`:
+- In `js/data.js`:
   ```js
-  apiUrl: ""   // e.g. "https://<swa>.azurestaticapps.net/api/submit"
+  apiUrl: "/api/submit"   // Cloudflare Pages Function on the same domain
   ```
 - In `js/app.js`, `submitResults()` order of attempts:
-  1. If `apiUrl` set → `fetch(apiUrl, {method:"POST", body})`, send the auth
-     token if the user signed in; on success show "Your results were
-     submitted". A failed request (non-2xx or network error) falls through to
-     the form paths below, so collection is never blocked.
+  1. If `apiUrl` set → `fetch(apiUrl, {method:"POST", body})`; on success show
+     "Your results were submitted". A failed request (non-2xx or network error)
+     falls through to the form paths below, so collection is never blocked.
   2. Else if `prefillTemplate` set → pre-filled form (Phase 0 behavior).
   3. Else → clipboard + open `formUrl` (Phase 0 fallback).
 - Payload shape (`buildSubmissionPayload()` in `js/app.js`):
-  `{ language, categories: [{ id, label, score, band }] }` — matches
-  `api/src/validate.js`.
+  `{ language, categories: [{ id, label, score, band }] }` — matches the
+  Cloudflare function's `validateSubmit`.
 - Keep the Microsoft Form path intact as the offline/unattended fallback
   (per the project's "do not remove existing capability" rule).
 
 ### Step 7 — Security & compliance controls
-- HTTPS everywhere (SWA default). HSTS header on.
-- No secrets in front-end code: the API call is unauthenticated-by-token UI
-  → Functions validates identity server-side.
-- CORS locked to your SWA domain.
-- Rate limiting at the API (e.g., 20 submits/hr per identity or IP).
-- Data at rest: Cosmos default encryption; no customer PII expected in
-  Option A.
-- Align with org scanners (Defender for Cloud, secret scanning in repo).
+- HTTPS everywhere (Cloudflare default). Site-level gate via Cloudflare Access
+  for internal-only reach.
+- No secrets in front-end code; the function runs server-side on Cloudflare.
+- CORS is not an issue with a same-origin relative `/api/submit`; if the site
+  is ever moved off-domain, lock CORS to that domain.
+- Rate limiting at the API (e.g., 20 submits/hr per identity or IP) —
+  Cloudflare WAF/rate-limiting rule or function-level check.
+- Data at rest: Cloudflare KV is encrypted at rest; no customer PII expected
+  in Option A.
+- Align with org scanners; keep secrets out of the repo.
 
 ### Step 8 — Staging + CI/CD
-- Repo: `business-evaluator` with GitHub Actions (or Azure DevOps).
-- Pipeline: push `main` → run `node --check` on JS + `api` → publish SWA →
-  smoke test the deployed URL with a headless check (reuse the existing
-  throwaway jsdom harness as a real `test/*.test.js` if approved nice-to-have).
-- Environments: `dev` (free/SWA staging) → `prod`.
-- Tagged releases only reach prod.
+- Repo: `business-evaluator` on GitHub; Cloudflare Pages **Git integration**
+  auto-builds on every push to `main` (green = PR preview, blue = production).
+- Pipeline: push `main` → Cloudflare runs tests? — currently Cloudflare builds
+  and deploys without running our test suite. **Recommended:** the local
+  workflow (`npm test` at root for the Cloudflare function) is run by the
+  existing GitHub Actions workflow `deploy-azure-static-web-apps.yml`; see note on
+  keeping tests wired in CI.
+- Environments: Cloudflare gives each PR a **preview URL** automatically;
+  `main` is **production**. No separate staging infra needed.
+- Tagged releases only reach prod if you gate the Pages project's production
+  branch (Settings → Builds & deployments → Production branch = `main`).
 
 ### Step 9 — Monitoring & operations
-- Application Insights alert: >5 failed submits in 10 min.
-- Backups: Cosmos continuous backup (Point-in-Time, default 30 days).
-- Retention policy: submissions kept 24 months, then purged
-  (align with the consent text in §6) — implement a scheduled purge
-  Function if you want it automatic.
+- Cloudflare Pages/Workers analytics: watch failed submits; alert on >5 in
+  10 min (Workers logs + email/Webhook).
+- Backups: KV is highly available with Cloudflare's edge storage; export
+  snapshots periodically if long-term retention is needed.
+- Retention policy: submissions kept 24 months, then purged (align with the
+  consent text in §6) — implement a scheduled purge Worker (Cron Trigger)
+  if you want it automatic.
 - Runbook: on-call contact, incident/recovery steps, data deletion
   procedure (subject to user/org requests).
 
@@ -179,12 +166,12 @@ New files only; no change to existing rendering/scoring logic.
   and review the aggregated numbers with the data owner.
 - Training one-pager (where to go, what happens to results, how to
   resubmit).
-- Full rollout to the target group(s); assign **Submitters** role via a
-  security group so uninvited users can't see the collected data.
+- Full rollout to the target group(s); gate access with Cloudflare Access so
+  uninvited users can't reach (or read) collected data.
 - Retire the Microsoft Form path only after the API path is stable for 1+.
 
 ### Step 11 — Straight-line to Phase 2 (later)
-- Once submissions accumulate: Power BI dataset over the Cosmos container →
+- Once submissions accumulate: export KV → Power BI / BI tool for
   benchmark/industry comparisons and over-time trends (the README roadmap
   items). Needs the data model agreed in Step 2; no re-architecture.
 
@@ -222,16 +209,16 @@ New files only; no change to existing rendering/scoring logic.
   transmitted unless they press “Submit results”.
 
 ### 3. Who has access
-- [ORG] program owner(s)/[DATA OWNER role], and Azure platform admins under
-  least-privilege; aggregated dashboards to [LEADERSHIP BODY] only if
-  approved for Phase 2.
-- Processed by Microsoft Cloud services: **East US** region, list:
+- [ORG] program owner(s)/[DATA OWNER role], and the Cloudflare account
+  admins under least-privilege; aggregated dashboards to [LEADERSHIP BODY]
+  only if approved for Phase 2.
+- Processed by Cloudflare services (global edge network), list:
   - Phase 0: Microsoft Forms / SharePoint/Excel (fallback only).
-  - Phase 1: Azure Static Web Apps, Azure Functions, Cosmos DB,
-    Application Insights.
+  - Phase 1: Cloudflare Pages, Cloudflare Functions, Cloudflare KV.
 
 ### 4. Where data lives & retention
-- Stored in **East US** Azure regions only (no cross-border transfer beyond it).
+- Stored in Cloudflare KV (data replicated across Cloudflare's global edge;
+  [ORG to confirm acceptable residency / any region pinning needed]).
 - Retention: **24 months**, then deleted or fully anonymized.
 - Deletion process: scheduled purge + documented manual deletion path on
   request ([CONTACT]).
@@ -245,15 +232,16 @@ New files only; no change to existing rendering/scoring logic.
   [30] days.
 
 ### 6. Security controls
-- Transport: HTTPS/HSTS only.
-- Authentication: optional Entra ID sign-in; role-gated Submitters access.
-- API: server-side validation, size caps, rate limiting, CORS locked.
-- No secrets in front-end code; Functions validate identity before storing.
-- Encryption at rest (Cosmos default); Application Insights logs exclude PII.
+- Transport: HTTPS only (Cloudflare default, automatic).
+- Authentication: optional — gate the app with Cloudflare Access (page-level
+  allow list) for an internal tool; role-gated submission handled there.
+- API: server-side validation, size caps, rate limiting, CORS locked if needed.
+- No secrets in front-end code; the function validates payload before storing.
+- Encryption at rest (Cloudflare KV default encryption); logs exclude PII.
 - Monitoring: alerts on abnormal submit failures/volumes.
 
 ### 7. Third-party/processor & DPIA
-- Microsoft (Azure/M365) is the processor — [ORG] remains controller.
+- Cloudflare, Inc. is the processor — [ORG] remains controller.
 - A DPIA is recommended if Option B (named attribution) is chosen, since it
   introduces identifiable data.
 
@@ -272,7 +260,10 @@ New files only; no change to existing rendering/scoring logic.
 ---
 
 ## Next actions
-1. Fill the `[ ]` placeholders (owner, region, retention, contacts).
-2. Decide the attribution & storage options in §2 — they gate Step 2 and the
-   consent wording in §5.
-3. Submit §Part-2 note with the Phase 1 steps for the approval gate.
+1. Fill the `[ ]` placeholders (owner, retention, contacts, reviewer roles).
+2. **Do the Cloudflare dashboard setup in `CLOUDFLARE-SETUP.md`** — connect
+   the GitHub repo as a Pages project, create the `SUBMISSIONS` KV namespace,
+   and bind it as `SUBMISSIONS_KV`. Then verify `/api/submit` returns 202.
+3. Decide organisation data-residency stance on Cloudflare's global edge (for
+   §4 of Part 2) — affects the approval gate.
+4. Submit §Part-2 note with the Phase 1 steps for the approval gate.

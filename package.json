@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "Static web app: business self-evaluation tool (Strengths/Weaknesses/Opportunities/Recommendations)",
   "private": true,
+  "type": "module",
   "scripts": {
-    "start": "npx --yes serve ."
+    "start": "npx --yes serve .",
+    "test": "node test/submit-cf.test.mjs"
   }
 }

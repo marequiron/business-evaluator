@@ -1,0 +1,23 @@
+name: CI - Run tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax-check front-end JS
+        run: node --check js/app.js && node --check js/data.js
+
+      - name: Run Cloudflare function tests
+        run: |
+          node --check functions/api/submit.js
+          npm test
