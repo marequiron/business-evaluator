@@ -47,14 +47,12 @@ attach it to the Pages project:
    - **KV namespace:** select `SUBMISSIONS`
 5. **Save**
 
-(If you prefer CLI: `npx wrangler kv namespace create SUBMISSIONS` then
-`npx wrangler pages project bind <PROJECT> --kv-namespace SUBMISSIONS`.)
+(If you prefer CLI: `npx wrangler pages project bind <PROJECT> --kv-namespace SUBMISSIONS`.)
 
 ## 4. Authorize the Worker to use `crypto.randomUUID()`
 
 Cloudflare Workers have built-in `crypto.randomUUID()` on modern runtimes — no
-extra configuration needed for the current decompile. If your runtime is older,
-set `compatibility_date` in `wrangler.toml` to a recent value.
+extra configuration needed for the current function.
 
 ## 5. Set environment variables (optional)
 
@@ -97,10 +95,10 @@ npm test          # runs the 11 Cloudflare function tests
 npm start         # serves the static site locally (API won't be live locally)
 ```
 
-For a fully local run with the function, install wrangler and add your KV
-namespace id to `wrangler.toml`:
+For a fully local run with the function, install wrangler and pass the KV
+binding (namespace id from the dashboard → KV → SUBMISSIONS → Settings):
 ```powershell
-npx wrangler pages dev .
+npx wrangler pages dev . --binding SUBMISSIONS_KV=<namespace-id>
 ```
 
 ---
@@ -113,7 +111,9 @@ business-evaluator/
 │   └── api/
 │       └── submit.js      # POST /api/submit (Cloudflare Pages Function)
 ├── css/, js/, index.html  # static site (published as-is)
-├── wrangler.toml          # local dev config (KV binding reference)
 └── test/
     └── submit-cf.test.mjs # 11 unit tests (Node built-ins only)
+
+The `SUBMISSIONS_KV` binding lives only in the Cloudflare dashboard (Pages →
+Settings → Functions → KV namespace bindings) — no config file in the repo.
 ```

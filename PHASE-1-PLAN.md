@@ -100,8 +100,9 @@ Implementation:
   3. Storage: writes the submission JSON to the `SUBMISSIONS_KV` binding under
      key `submissionId`. Without a KV binding: dev env logs-and-acks
      (`stored:false`); otherwise returns 500 so nothing is silently dropped.
-- `wrangler.toml` — documents the `SUBMISSIONS_KV` binding (replace the
-  namespace id) and Pages output dir for local dev (`npx wrangler pages dev .`).
+- Binding: `SUBMISSIONS_KV` is configured in the Cloudflare dashboard
+  (Pages project → Settings → Functions → KV namespace bindings), not in a
+  repo file. For local `wrangler pages dev`, pass `--binding SUBMISSIONS_KV=<id>`.
 - Tests: `test/submit-cf.test.mjs` — 11 checks in plain Node (built-ins only).
 - `CLOUDFLARE-SETUP.md` — step-by-step dashboard guide + verification steps.
 

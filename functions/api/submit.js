@@ -7,9 +7,10 @@
  * behaviour as the original Azure handler (see api/src/handler.js), but is
  * self-contained for Cloudflare Workers (ES module, no Node build step).
  *
- * Storage is delegated to a KV binding named SUBMISSIONS_KV (see wrangler.toml
- * / dashboard). When the binding is absent (local dev without config), it
- * falls back to log-and-ack so submissions are never silently dropped.
+ * Storage is delegated to a KV binding named SUBMISSIONS_KV, configured in
+ * the Cloudflare dashboard (Pages project -> Settings -> Functions -> KV
+ * namespace bindings). When the binding is absent (local dev without config),
+ * it falls back to log-and-ack so submissions are never silently dropped.
  */
 
 const MAX_BODY_BYTES = 10 * 1024; // 10 KB
