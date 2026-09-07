@@ -1,0 +1,17 @@
+name: Live smoke test (workers.dev)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * *" # daily 04:17 UTC
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run live smoke test against the pinned URL
+        run: node .github/scripts/live-smoke.mjs
+        env:
+          LIVE_URL: https://business-evaluator.marequiron.workers.dev

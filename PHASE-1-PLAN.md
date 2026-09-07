@@ -153,6 +153,11 @@ Implementation:
   Our test suite runs in GitHub Actions (`.github/workflows/ci.yml`:
   `node --check` + `npm test` + a parity check that the committed Worker
   bundle matches `functions/`).
+- Live smoke: `.github/workflows/live-smoke.yml` runs
+  `.github/scripts/live-smoke.mjs` pinned to the workers.dev URL (manual
+  trigger or daily 04:17 UTC) — asserts the site serves 200 and
+  `POST /api/submit` returns 202 `stored:true`. Smoke submissions are labeled
+  `pipeline-smoke <ts>` so they can be purged from KV.
 - Environments: Cloudflare gives each PR a **preview URL** automatically;
   `main` is **production**. No separate staging infra needed.
 - Tagged releases only reach prod if you gate the Pages project's production
