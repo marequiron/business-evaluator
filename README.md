@@ -1,14 +1,17 @@
 # Business Self-Evaluation Tool
 
 A zero-install, single-page web app that helps a business owner:
-1. Answer 1-5 rating questions across 7 categories (Finance, Marketing &
-   Sales, Operations, People, Technology, Customer Experience, Strategy).
+1. Answer 1-5 rating questions across 8 categories (Finance, Marketing &
+   Sales, Operations, People, Technology, Customer Experience, Strategy,
+   Legal & Compliance).
 2. Automatically see which categories are **Strengths**, **Weaknesses**, or
    **Opportunities to explore**.
 3. Get a tailored, plain-language recommendation for every category.
 4. Switch between **simple** (default) and **standard** wording.
-5. Export results as a text file to share or archive.
-6. Submit results to a Microsoft Form (opt-in) so leadership can
+5. Export results as a text file, or print / save as a PDF.
+6. Track changes over time: every evaluation is auto-saved as a snapshot,
+   with compare, delete, and JSON export/import.
+7. Submit results to a Microsoft Form (opt-in) so leadership can
    collect/aggregate them.
 
 Everything runs client-side in the browser — no server, no database, no
@@ -104,8 +107,9 @@ service is already scaffolded and unit-tested — run `npm install && npm test`
 inside `api/` to verify.
 
 ## Roadmap ideas (good opencode prompts)
-- Save/compare multiple assessments over time (would need light persistence
-  beyond `localStorage` — e.g., export/import JSON).
 - A "benchmark" mode comparing scores against industry averages.
-- Printable one-page PDF summary for sharing with advisors/investors.
 - Multi-language support for the questions and recommendations.
+- A comparison view across more than two snapshots at once.
+
+Already shipped: save/compare over time (localStorage snapshots +
+JSON export/import), and print / save-as-PDF.

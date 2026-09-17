@@ -2,7 +2,7 @@
 
 ## What this project is
 A single-page web app that lets a business owner answer Likert-scale (1-5)
-questions across 7 categories, then automatically classifies each category as
+questions across 8 categories, then automatically classifies each category as
 a **Strength**, **Weakness**, or **Opportunity** and shows a tailored
 recommendation for it. No backend, no build step, no database — pure static
 HTML/CSS/JS so it's easy to run, deploy (e.g., GitHub Pages), and extend.
@@ -20,11 +20,14 @@ HTML/CSS/JS so it's easy to run, deploy (e.g., GitHub Pages), and extend.
   questions here — no other file needs to change for content edits.
 - `js/app.js` — rendering + logic. Builds the form from `CATEGORIES`,
   stores answers in `localStorage` (key: `business-evaluator-answers-v1`),
-  computes per-category averages, and renders the bar chart + grouped
-  result cards. Also handles a "simple vs. standard" wording toggle
-  (mode key `business-evaluator-mode-v1`, default `simple`), the "Export
-  Results" (.txt download), "Submit results" (see below), and "Reset"
-  buttons.
+  computes per-category averages, and renders the bar chart (with band
+  legend) + grouped result cards. Also handles a "simple vs. standard"
+  wording toggle (mode key `business-evaluator-mode-v1`, default `simple`),
+  the "Export Results" (.txt download) and "Print / Save as PDF"
+  (`window.print()` + print stylesheet) buttons, "Submit results" (see
+  below), "Reset", and a history/compare panel: evaluating auto-saves a
+  snapshot (`business-evaluator-history-v1`, capped at 100) with manual
+  save/compare/delete plus JSON export/import.
 - `api/` — Phase 1 submission service (Azure Functions → Cosmos DB), behind
   an approval gate (see `PHASE-1-PLAN.md`). `src/validate.js` (pure payload
   checks), `src/handler.js` (framework-agnostic request logic), `src/store.js`
@@ -42,8 +45,10 @@ HTML/CSS/JS so it's easy to run, deploy (e.g., GitHub Pages), and extend.
 - Scoring convention: statements are always phrased so "5 = strongly agree"
   is the *good* outcome. If you add a question, phrase it the same way so
   scoring stays consistent.
-- No build/test tooling exists yet. If asked to add tests, prefer a
-  zero-config option (e.g., Vitest) so setup stays lightweight.
+- There is no front-end build or bundling step. The `api/` folder has
+  plain-Node unit tests (`npm test` in `api/`), and CI runs `node --check`
+  on the front-end JS. Keep the front end dependency-free; when asked to add
+  tests, prefer a zero-config option (e.g., Vitest) so setup stays light.
 
 ## How to run
 Just open `index.html` in a browser, or serve it locally:
@@ -54,11 +59,19 @@ or use the VS Code "Live Server" extension.
 
 ## Common tasks you (opencode) may be asked to do here
 - Add a new assessment category or question → edit `js/data.js` only.
+  Note: the `api/` validation contract expects exactly **8** categories —
+  changing the category count means updating `REQUIRED_CATEGORY_COUNT` in
+  `api/src/validate.js` and the fixtures in `api/test/submit.test.js` too.
 - Change scoring thresholds (what counts as weak/ok/strong) → `SCORE_BANDS`
   in `js/data.js`.
 - Add a results export format (PDF, CSV, email) → extend `exportResults()`
   in `js/app.js`; keep the existing .txt export working unless told to
-  replace it.
+  replace it. (A zero-dependency "Print / Save as PDF" button already exists
+  via `printResults()` + the print stylesheet.)
+- Change the snapshot/history behaviour (auto-save, compare, export/import)
+  → edit the history block in `js/app.js` (`HISTORY_KEY`, `createSnapshot()`,
+  `renderHistory()`, `showCompare()`, `exportHistoryJson()`, `importHistoryJson()`);
+  the UI lives in the `#history` section of `index.html`.
 - Change the submission target → edit `SUBMIT_FORM` in `js/data.js`:
   `apiUrl` (Phase 1 API), `formUrl` + optional `prefillTemplate` (Microsoft
   Form fallback). The submit flow lives in `submitResults()` in `js/app.js`
@@ -68,9 +81,10 @@ or use the VS Code "Live Server" extension.
 - Modify the submit API → edit `api/src/` (or add tests in `api/test/`), run
   `npm test` in `api/`. Note `handler.js` is framework-agnostic and injected
   with a store, so tests need no Azure packages.
-- Add persistence beyond localStorage (e.g., save multiple assessments,
-  compare over time) → propose a plan before adding a backend, since this
-  is currently a fully static/offline app by design.
+- Add persistence beyond what exists (multi-snapshot localStorage history
+  with compare/export is already in; anything more, e.g., a synced backend)
+  → propose a plan before adding a backend, since this is currently a fully
+  static/offline app by design.
 - Deploy to GitHub Pages → no build step needed; the repo root can be
   published directly.
 

@@ -97,7 +97,7 @@ Resource group: `rg-business-evaluator` (region: **East US**)
 
 New files only; no change to existing rendering/scoring logic.
 - `api/` (Azure Functions, Node v4 `@azure/functions`, trigger `POST /api/submit`):
-  1. `api/src/validate.js` — payload shape (exactly 7 categories, scores 0–5,
+  1. `api/src/validate.js` — payload shape (exactly 8 categories, scores 0–5,
      bands `weakness|opportunity|strength|unanswered`, language
      `simple|standard`), plus size cap (10 KB) and field checks. Pure and
      dependency-free.
@@ -120,8 +120,8 @@ New files only; no change to existing rendering/scoring logic.
   `COSMOS_DATABASE`, `COSMOS_CONTAINER`, `REQUIRE_AUTH`, `SUBMITTER_ROLE`,
   `DEV_NO_STORE`.
 - Tests: `api/test/submit.test.js` runs in plain Node (`npm test` in `api/`,
-  no install needed) — 17 checks covering validation, auth, store failure,
-  and Cosmos-config states.
+no install needed) — 21 checks covering validation, auth, store failure,
+   and Cosmos-config states.
 - Function auth (deployed): require the SWA-issued access token (managed
   identity); do **not** accept anonymous function-level calls except during a
   reviewed pilot window.
@@ -204,7 +204,7 @@ New files only; no change to existing rendering/scoring logic.
 > Target audience: IT security / privacy / procurement reviewers.
 
 ### 1. Purpose
-- The tool runs a business self-evaluation: users answer 7 categories of
+- The tool runs a business self-evaluation: users answer 8 categories of
   1–5 rating questions, get per-category strengths/weaknesses/opportunities,
   and receive tailored recommendations.
 - Users may voluntarily submit their anonymized results so [ORG] can
@@ -212,7 +212,7 @@ New files only; no change to existing rendering/scoring logic.
   **optional**; using the evaluation itself never requires it.
 
 ### 2. What is collected
-- Per-category numeric scores (7 values), computed score band, which language
+- Per-category numeric scores (8 values), computed score band, which language
   wording was used, timestamp of submission.
 - Optional non-PII label if approved (e.g., "Business A") — **no name /
   email / contact details** unless Option B (named attribution) is approved,
