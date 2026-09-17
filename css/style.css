@@ -322,6 +322,133 @@ button.danger {
 
 .hint { color: var(--muted); }
 
+.analyze {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px 18px;
+  margin-bottom: 20px;
+}
+
+.analyze summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 12px 0;
+}
+
+.analyze[open] summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.analyze-body { padding: 14px 0 18px 0; }
+
+.analyze-note {
+  margin: 0 0 14px 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 700px;
+}
+
+.analyze-toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.analyze-toolbar input[type="file"] { font-size: 13px; max-width: 100%; }
+
+.analyze-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.analyze-status.is-error {
+  color: var(--weakness);
+  border-color: var(--weakness);
+  background: #fdecec;
+}
+
+.analyze-progress {
+  background: #e6e9ef;
+  border-radius: 6px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.analyze-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 6px;
+  transition: width 0.2s ease;
+}
+
+.analyze-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.analyze-row:last-child { border-bottom: none; }
+
+.analyze-row input[type="checkbox"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.analyze-row-main { flex: 1; }
+
+.analyze-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.analyze-score {
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 6px;
+  padding: 2px 8px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.analyze-score.score-strength { background: var(--strength); }
+.analyze-score.score-opportunity { background: var(--opportunity); }
+.analyze-score.score-weakness { background: var(--weakness); }
+.analyze-score.score-none { background: var(--muted); }
+
+.analyze-rationale {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.analyze-apply {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.analyze-apply .hint { font-size: 12px; margin: 0; }
+
 .chart-wrap {
   background: var(--card-bg);
   border: 1px solid var(--border);
@@ -400,6 +527,7 @@ footer {
 
   body.printing header,
   body.printing form,
+  body.printing #analyze,
   body.printing .actions,
   body.printing footer,
   body.printing #embed-container,

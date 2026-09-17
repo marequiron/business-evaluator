@@ -7,15 +7,21 @@ A zero-install, single-page web app that helps a business owner:
 2. Automatically see which categories are **Strengths**, **Weaknesses**, or
    **Opportunities to explore**.
 3. Get a tailored, plain-language recommendation for every category.
-4. Switch between **simple** (default) and **standard** wording.
+4. Read each question/recommendation in business wording, with a ⓘ button
+   that opens a plain-language explanation on demand.
 5. Export results as a text file, or print / save as a PDF.
 6. Track changes over time: every evaluation is auto-saved as a snapshot,
    with compare, delete, and JSON export/import.
 7. Submit results to a Microsoft Form (opt-in) so leadership can
    collect/aggregate them.
+8. *(Optional)* Upload a text/CSV/JSON business document and have an
+   **on-device AI** suggest a score + rationale per category, which you review
+   before applying.
 
 Everything runs client-side in the browser — no server, no database, no
-accounts, no data leaving the machine.
+accounts. Your answers and any uploaded documents never leave the machine.
+(The optional document analyzer downloads its model from Hugging Face once,
+then runs entirely on your device.)
 
 ## Quick start
 Pick whichever is easiest for you:
@@ -27,13 +33,23 @@ Pick whichever is easiest for you:
   `index.html` → "Open with Live Server".
 - **Node (optional):** `npm start` (runs `npx serve .`).
 
+> The core app works from `file://` too, but the optional **document analyzer**
+> (it loads a WebAssembly module and a model) must be served over HTTP — use
+> `npm run local`.
+
+Run the front-end unit tests with `npm test` (plain Node, no install needed).
+
 ## Project layout
 ```
 business-evaluator/
 ├── index.html        # page shell
 ├── css/style.css      # all styling
-├── js/data.js          # categories, questions, recommendations + SUBMIT_FORM (edit content here)
+├── js/data.js          # categories, questions, recommendations + SUBMIT_FORM + ANALYZE (edit content here)
 ├── js/app.js           # rendering + scoring logic (edit behavior here)
+├── js/analyzer-parse.js # pure doc→text + prompt/parse helpers (used by app + tests)
+├── js/analyzer.js       # provider abstraction: on-device (wllama) / api / mock
+├── js/vendor/wllama/    # vendored on-device engine (MIT) — see its README.txt
+├── test/analyzer.test.js # plain-Node unit tests (npm test)
 ├── api/                # Phase 1 submission service (Azure Functions → Cosmos DB)
 │   ├── src/            # validate.js, handler.js, store.js, functions/submit.js
 │   └── test/           # plain-Node unit tests (npm test in api/)
@@ -84,6 +100,26 @@ All content lives in `js/data.js`:
 - Questions/recommendations show the business wording by default; each has a
   ⓘ button that opens a plain-language overlay with the `simple` text. The
   overlay behavior lives in `js/app.js`.
+
+## Analyzing a document (optional, on-device AI)
+Expand **"🧠 Analyze a document"** at the top of the page, choose a `.txt`,
+`.md`, `.csv`, or `.json` business document, and click **Analyze**. A small
+language model runs **entirely in your browser** (via the vendored
+[`@wllama/wllama`](https://github.com/ngxson/wllama) engine + WebAssembly) and
+suggests a 1-5 score and a short rationale for each category.
+
+- **Privacy:** the document is never uploaded. The model itself (a ~1 GB GGUF
+  file) is downloaded once from Hugging Face and cached by the browser.
+- **You stay in control:** suggestions are shown for review and are *never*
+  applied automatically. Tick the ones you agree with and click **Apply
+  selected**, which sets all 5 questions in each selected category.
+- **Configuration** lives in `js/data.js` → `ANALYZE` (provider, model repo/
+  file, context size, max input length). Swap `modelRepo`/`modelFile` for a
+  smaller model to make the first run lighter. The engine files themselves are
+  committed under `js/vendor/wllama/` (see its `README.txt` for how to update).
+- **Requirements:** a modern desktop browser (WebGPU is used when available;
+  otherwise it falls back to CPU, which is slower). The engine is loaded
+  lazily — nothing is downloaded until you first click Analyze.
 
 ## Submitting results
 The "📤 Submit results" button sends the evaluation so leadership can

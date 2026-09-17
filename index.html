@@ -16,6 +16,32 @@
   </header>
 
   <main>
+    <details id="analyze" class="analyze">
+      <summary>🧠 Analyze a document (optional, on-device AI)</summary>
+      <div class="analyze-body">
+        <p class="analyze-note">
+          Upload a business document (text, CSV, or JSON) and an on-device model
+          suggests a score for each category, with its reasoning. Nothing is
+          uploaded — the model runs entirely in your browser (the first run
+          downloads it once, then it is cached). Suggestions are never applied
+          automatically; you review them first.
+        </p>
+        <div class="analyze-toolbar">
+          <input type="file" id="analyze-file"
+            accept=".txt,.md,.csv,.json,text/plain,text/csv,application/json" />
+          <button id="analyze-btn" type="button">Analyze</button>
+          <button id="analyze-clear-btn" type="button" class="secondary" hidden>Clear</button>
+        </div>
+        <div id="analyze-status" class="analyze-status" hidden>
+          <span id="analyze-status-text"></span>
+          <div id="analyze-progress" class="analyze-progress" hidden>
+            <div id="analyze-progress-bar" class="analyze-progress-bar"></div>
+          </div>
+        </div>
+        <div id="analyze-results"></div>
+      </div>
+    </details>
+
     <form id="assessment-form" autocomplete="off"></form>
 
     <div class="actions">
@@ -47,10 +73,14 @@
   </main>
 
   <footer>
-    <p>Everything runs in your browser — no data leaves your machine.</p>
+    <p>Everything runs in your browser — your answers and any uploaded documents
+      never leave your machine. (The optional on-device analyzer downloads its
+      model once, then runs locally.)</p>
   </footer>
 
   <script src="js/data.js"></script>
+  <script src="js/analyzer-parse.js"></script>
+  <script src="js/analyzer.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

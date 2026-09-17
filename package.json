@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "start": "npx --yes serve .",
-    "local": "node serve.js"
+    "local": "node serve.js",
+    "test": "node test/analyzer.test.js"
   }
 }

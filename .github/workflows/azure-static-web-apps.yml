@@ -15,7 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Syntax-check front-end JS
-        run: node --check js/app.js && node --check js/data.js
+        run: |
+          node --check js/app.js
+          node --check js/data.js
+          node --check js/analyzer.js
+          node --check js/analyzer-parse.js
+          node --check serve.js
+      - name: Run front-end tests
+        run: npm test
       - name: Install API deps
         working-directory: api
         run: npm ci || npm install

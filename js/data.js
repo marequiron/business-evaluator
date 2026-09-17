@@ -54,6 +54,30 @@ const SUBMIT_FORM = {
   prefillTemplate: ""
 };
 
+/*
+ * ANALYZE — optional on-device document analysis (score assist).
+ * Config only (no logic); the behavior lives in js/analyzer.js + js/app.js.
+ *  - provider: "wllama" (on-device, default), "api" (Phase 1 backend), "mock".
+ *  - moduleUrl/wasmUrl: the vendored engine in js/vendor/wllama/ (no CDN).
+ *  - modelRepo/modelFile: the GGUF weights, downloaded once from Hugging Face
+ *    and cached by the browser. Swap these for a smaller/larger model as needed
+ *    (e.g. bartowski/Llama-3.2-1B-Instruct-GGUF → Llama-3.2-1B-Instruct-Q4_K_M.gguf).
+ *  - maxChars: how much of the document is sent to the model.
+ *  - apiUrl: only used when provider is "api".
+ */
+const ANALYZE = {
+  provider: "wllama",
+  moduleUrl: "js/vendor/wllama/index.min.js",
+  wasmUrl: "js/vendor/wllama/wasm/wllama.wasm",
+  modelRepo: "bartowski/Qwen2.5-1.5B-Instruct-GGUF",
+  modelFile: "Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+  contextSize: 4096,
+  temperature: 0.1,
+  maxTokens: 900,
+  maxChars: 6000,
+  apiUrl: ""
+};
+
 const CATEGORIES = [
   {
     id: "finance",

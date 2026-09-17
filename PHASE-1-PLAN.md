@@ -188,13 +188,26 @@ no install needed) — 21 checks covering validation, auth, store failure,
   benchmark/industry comparisons and over-time trends (the README roadmap
   items). Needs the data model agreed in Step 2; no re-architecture.
 
+### Step 12 — Document analyzer, backend offload (optional, later)
+- Today the optional document analyzer runs **on-device** (`ANALYZE.provider`
+  = `"wllama"`): the document never leaves the browser and the model is
+  downloaded once and cached. This is the privacy-preserving default and needs
+  no infrastructure.
+- If a larger/hosted model is ever wanted, `js/analyzer.js` already exposes an
+  `"api"` provider (set `ANALYZE.provider` + `ANALYZE.apiUrl`). That path
+  **would** send document text to a server, so it must go through the same
+  approval gate as the submission API (data model, retention, consent) before
+  being enabled. Until then, keep `provider: "wllama"`.
+
 ---
 
 ## 3. What does NOT change
 
 - Question content, scoring bands, both language wordings.
 - The `.txt` export and local persistence.
-- The static, dependency-free rule for the *front end* (no framework added).
+- The static, dependency-free rule for the *front end* (no framework added),
+  with the single documented exception of the vendored `@wllama/wllama`
+  engine used by the optional on-device document analyzer.
 
 ---
 

@@ -819,8 +819,268 @@ function resetAll() {
   document.getElementById("embed-container").innerHTML = "";
 }
 
+// ---- Optional on-device document analysis (score assist) ----------------
+// Uploads a text/CSV/JSON document, asks the analyzer for a suggested score
+// per category with a rationale, and lets the user apply the ones they trust.
+// Nothing is uploaded and nothing is applied automatically.
+
+const analyzeState = { suggestions: null, analyzer: null, busy: false };
+
+function analyzeEl(id) {
+  return document.getElementById(id);
+}
+
+function setAnalyzeStatus(message, isError) {
+  const box = analyzeEl("analyze-status");
+  const text = analyzeEl("analyze-status-text");
+  if (!box || !text) return;
+  if (!message) {
+    box.hidden = true;
+    box.classList.remove("is-error");
+    text.textContent = "";
+    return;
+  }
+  box.hidden = false;
+  box.classList.toggle("is-error", !!isError);
+  text.textContent = message;
+}
+
+function setAnalyzeProgress(percent) {
+  const wrap = analyzeEl("analyze-progress");
+  const bar = analyzeEl("analyze-progress-bar");
+  if (!wrap || !bar) return;
+  if (percent == null) {
+    wrap.hidden = true;
+    bar.style.width = "0%";
+    return;
+  }
+  wrap.hidden = false;
+  bar.style.width = Math.max(0, Math.min(100, percent)) + "%";
+}
+
+function setAnalyzeBusy(busy) {
+  analyzeState.busy = busy;
+  const btn = analyzeEl("analyze-btn");
+  const fileInput = analyzeEl("analyze-file");
+  if (btn) {
+    btn.disabled = busy;
+    btn.textContent = busy ? "Analyzing…" : "Analyze";
+  }
+  if (fileInput) fileInput.disabled = busy;
+}
+
+function readFileText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Could not read the file."));
+    reader.readAsText(file);
+  });
+}
+
+function bandForScore(score) {
+  if (score == null) return "none";
+  if (score <= SCORE_BANDS.WEAKNESS_MAX) return "weakness";
+  if (score <= SCORE_BANDS.OPPORTUNITY_MAX) return "opportunity";
+  return "strength";
+}
+
+function renderAnalyzeResults(suggestions) {
+  const listEl = analyzeEl("analyze-results");
+  const clearBtn = analyzeEl("analyze-clear-btn");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  analyzeState.suggestions = suggestions;
+
+  if (!suggestions || suggestions.length === 0) {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = "The model could not produce any usable suggestions for this document.";
+    listEl.appendChild(p);
+    if (clearBtn) clearBtn.hidden = true;
+    return;
+  }
+
+  const h3 = document.createElement("h3");
+  h3.textContent = "Suggested scores (review before applying)";
+  listEl.appendChild(h3);
+
+  const byId = {};
+  CATEGORIES.forEach((c) => { byId[c.id] = c; });
+
+  suggestions.forEach((s) => {
+    const cat = byId[s.id];
+    if (!cat) return;
+
+    const row = document.createElement("div");
+    row.className = "analyze-row";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = s.score != null;
+    cb.disabled = s.score == null;
+    cb.setAttribute("data-category", s.id);
+    cb.setAttribute("aria-label", "Apply suggestion for " + cat.label);
+    row.appendChild(cb);
+
+    const main = document.createElement("div");
+    main.className = "analyze-row-main";
+
+    const head = document.createElement("div");
+    head.className = "analyze-row-head";
+
+    const label = document.createElement("strong");
+    label.textContent = cat.icon + " " + cat.label;
+    head.appendChild(label);
+
+    const badge = document.createElement("span");
+    badge.className = "analyze-score score-" + bandForScore(s.score);
+    badge.textContent = s.score != null ? "suggests " + s.score + "/5" : "not enough info";
+    head.appendChild(badge);
+    main.appendChild(head);
+
+    const rationale = document.createElement("p");
+    rationale.className = "analyze-rationale";
+    rationale.textContent = s.rationale || "(no rationale provided)";
+    main.appendChild(rationale);
+
+    row.appendChild(main);
+    listEl.appendChild(row);
+  });
+
+  const apply = document.createElement("div");
+  apply.className = "analyze-apply";
+
+  const applyBtn = document.createElement("button");
+  applyBtn.type = "button";
+  applyBtn.textContent = "Apply selected to my answers";
+  applyBtn.addEventListener("click", applyAnalyzeSuggestions);
+  apply.appendChild(applyBtn);
+
+  const note = document.createElement("span");
+  note.className = "hint";
+  note.textContent = "Applying sets all 5 questions in each selected category to the suggested score.";
+  apply.appendChild(note);
+
+  listEl.appendChild(apply);
+  if (clearBtn) clearBtn.hidden = false;
+}
+
+function clearAnalyzeResults() {
+  analyzeState.suggestions = null;
+  const listEl = analyzeEl("analyze-results");
+  if (listEl) listEl.innerHTML = "";
+  const clearBtn = analyzeEl("analyze-clear-btn");
+  if (clearBtn) clearBtn.hidden = true;
+  setAnalyzeStatus("");
+  setAnalyzeProgress(null);
+}
+
+function applyAnalyzeSuggestions() {
+  const listEl = analyzeEl("analyze-results");
+  if (!listEl || !analyzeState.suggestions) return;
+
+  const selected = [];
+  listEl.querySelectorAll("input[data-category]:checked").forEach((cb) => {
+    const id = cb.getAttribute("data-category");
+    const s = analyzeState.suggestions.find((x) => x.id === id);
+    if (s && s.score != null) selected.push(s);
+  });
+  if (selected.length === 0) {
+    alert("Select at least one category suggestion to apply.");
+    return;
+  }
+
+  const plural = selected.length === 1 ? "category" : "categories";
+  if (!confirm("Apply suggestions to " + selected.length + " " + plural +
+    "? This sets all 5 questions in each selected category and overwrites those answers.")) return;
+
+  const byId = {};
+  CATEGORIES.forEach((c) => { byId[c.id] = c; });
+  selected.forEach((s) => {
+    const cat = byId[s.id];
+    if (!cat) return;
+    cat.questions.forEach((_, i) => { state.answers[answerKey(cat.id, i)] = s.score; });
+  });
+  saveAnswers();
+  renderForm();
+  setAnalyzeStatus("Applied " + selected.length + " " + plural +
+    " to your answers. Review and adjust, then click \"Evaluate My Business\".");
+}
+
+async function runAnalyze() {
+  if (analyzeState.busy) return;
+  const fileInput = analyzeEl("analyze-file");
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  if (!file) {
+    setAnalyzeStatus("Choose a text, CSV, or JSON file first.", true);
+    return;
+  }
+  const config = typeof ANALYZE !== "undefined" ? ANALYZE : null;
+  if (!config) {
+    setAnalyzeStatus("Analysis is not configured (ANALYZE is missing in js/data.js).", true);
+    return;
+  }
+
+  setAnalyzeBusy(true);
+  setAnalyzeProgress(null);
+  const cpuNote = Analyzer.isWebGpuAvailable() ? "" : " (no WebGPU — CPU mode, may be slow)";
+  setAnalyzeStatus("Reading " + file.name + "…" + cpuNote);
+
+  try {
+    const raw = await readFileText(file);
+    const asText = AnalyzerParse.documentToText(file.name, raw);
+    const trimmed = AnalyzerParse.truncateDocument(asText, config.maxChars);
+    if (!trimmed.text.trim()) throw new Error("That file appears to be empty.");
+
+    if (!analyzeState.analyzer) {
+      analyzeState.analyzer = Analyzer.createAnalyzer(config, CATEGORIES);
+    }
+
+    let streamed = 0;
+    const handlers = {
+      onStatus: (message) => setAnalyzeStatus(message),
+      onProgress: (p) => {
+        if (p && p.total) {
+          setAnalyzeProgress(p.percent);
+          setAnalyzeStatus("Downloading model… " + p.percent + "%");
+        }
+      },
+      onToken: (piece) => {
+        streamed += piece.length;
+        setAnalyzeProgress(100);
+        setAnalyzeStatus("Analyzing document… (" + streamed + " characters)");
+      }
+    };
+
+    const result = await analyzeState.analyzer.analyze(trimmed.text, handlers);
+    setAnalyzeProgress(null);
+    if (trimmed.truncated) {
+      setAnalyzeStatus("Analyzed the first " + config.maxChars + " characters of " + file.name + ".");
+    } else {
+      setAnalyzeStatus("Analysis complete: " + file.name + ".");
+    }
+    renderAnalyzeResults(result.suggestions);
+  } catch (err) {
+    setAnalyzeProgress(null);
+    const message = err && err.message ? err.message : String(err);
+    setAnalyzeStatus("Analysis failed: " + message +
+      " If you opened this page as a file, serve it instead (npm run local).", true);
+  } finally {
+    setAnalyzeBusy(false);
+  }
+}
+
+function initAnalyze() {
+  const btn = analyzeEl("analyze-btn");
+  const clearBtn = analyzeEl("analyze-clear-btn");
+  if (btn) btn.addEventListener("click", runAnalyze);
+  if (clearBtn) clearBtn.addEventListener("click", clearAnalyzeResults);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   renderForm();
+  initAnalyze();
   document.getElementById("evaluate-btn").addEventListener("click", evaluate);
   document.getElementById("submit-btn").addEventListener("click", submitResults);
   document.getElementById("export-btn").addEventListener("click", exportResults);
