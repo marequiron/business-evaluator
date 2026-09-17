@@ -9,13 +9,12 @@
  */
 
 const STORAGE_KEY = "business-evaluator-answers-v1";
-const MODE_KEY = "business-evaluator-mode-v1";
-// New users with no saved choice get the plain-language wording.
-const DEFAULT_MODE = "simple";
+// Questions and recommendations always show the business wording; the
+// plain-language version is revealed on demand by the ⓘ overlay below.
+const LANGUAGE = "standard";
 
 const state = {
   answers: loadAnswers(),
-  mode: loadMode(),
 };
 
 function loadAnswers() {
@@ -31,42 +30,109 @@ function saveAnswers() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.answers));
 }
 
-function loadMode() {
-  try {
-    const raw = localStorage.getItem(MODE_KEY);
-    return raw === "standard" ? "standard" : "simple";
-  } catch (e) {
-    return DEFAULT_MODE;
+// Plain-language text used by the ⓘ overlay. Returns "" when none is defined
+// so the caller can omit the button entirely.
+function questionPlainText(q) {
+  return q && q.simple ? q.simple : "";
+}
+
+function recommendationPlainText(rec) {
+  return rec && rec.simple ? rec.simple : "";
+}
+
+const INFO_OVERLAY_ID = "info-overlay";
+let activeInfoButton = null;
+
+function getInfoOverlay() {
+  let el = document.getElementById(INFO_OVERLAY_ID);
+  if (!el) {
+    el = document.createElement("div");
+    el.id = INFO_OVERLAY_ID;
+    el.className = "info-overlay";
+    el.setAttribute("role", "dialog");
+    el.setAttribute("aria-hidden", "true");
+    el.hidden = true;
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+function closeInfoOverlay() {
+  const overlay = getInfoOverlay();
+  if (overlay.hidden) return;
+  overlay.hidden = true;
+  overlay.setAttribute("aria-hidden", "true");
+  overlay.classList.remove("info-overlay--above");
+  if (activeInfoButton) {
+    activeInfoButton.setAttribute("aria-expanded", "false");
+    activeInfoButton = null;
   }
 }
 
-function saveMode() {
-  localStorage.setItem(MODE_KEY, state.mode);
+function positionInfoOverlay(button, overlay) {
+  const margin = 10;
+  const rect = button.getBoundingClientRect();
+  overlay.style.visibility = "hidden";
+  overlay.hidden = false;
+  const oRect = overlay.getBoundingClientRect();
+
+  let top = rect.bottom + margin;
+  let above = false;
+  if (top + oRect.height > window.innerHeight - margin && rect.top - margin - oRect.height > margin) {
+    top = rect.top - margin - oRect.height;
+    above = true;
+  }
+
+  let left = rect.left;
+  if (left + oRect.width > window.innerWidth - margin) left = window.innerWidth - margin - oRect.width;
+  if (left < margin) left = margin;
+
+  overlay.classList.toggle("info-overlay--above", above);
+  overlay.style.top = Math.round(top) + "px";
+  overlay.style.left = Math.round(left) + "px";
+  overlay.style.visibility = "visible";
 }
 
-function toggleMode() {
-  state.mode = state.mode === "simple" ? "standard" : "simple";
-  saveMode();
-  updateToggleLabel();
-  renderForm();
-  const resultsEl = document.getElementById("results");
-  if (resultsEl.childElementCount > 0) renderResults();
+function toggleInfoOverlay(button, title, text) {
+  const overlay = getInfoOverlay();
+  if (activeInfoButton === button && !overlay.hidden) {
+    closeInfoOverlay();
+    return;
+  }
+  if (activeInfoButton) activeInfoButton.setAttribute("aria-expanded", "false");
+  activeInfoButton = button;
+  button.setAttribute("aria-expanded", "true");
+
+  overlay.innerHTML = "";
+  const label = document.createElement("span");
+  label.className = "info-overlay-title";
+  label.textContent = title;
+  const body = document.createElement("p");
+  body.className = "info-overlay-text";
+  body.tabIndex = -1;
+  body.textContent = text;
+  overlay.appendChild(label);
+  overlay.appendChild(body);
+
+  overlay.setAttribute("aria-hidden", "false");
+  positionInfoOverlay(button, overlay);
+  body.focus({ preventScroll: true });
 }
 
-function updateToggleLabel() {
-  const btn = document.getElementById("toggle-btn");
-  if (!btn) return;
-  const simple = state.mode === "simple";
-  btn.textContent = simple ? "🔤 Use business language" : "🗣️ Use simple language";
-  btn.classList.toggle("active", simple);
-}
-
-function questionText(q) {
-  return state.mode === "simple" ? q.simple : q.text;
-}
-
-function recommendationText(rec) {
-  return state.mode === "simple" ? rec.simple : rec.text;
+function createInfoButton(title, text) {
+  if (!text) return null;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "info-btn";
+  btn.textContent = "i";
+  btn.setAttribute("aria-label", title);
+  btn.setAttribute("aria-expanded", "false");
+  btn.setAttribute("title", title);
+  btn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleInfoOverlay(btn, title, text);
+  });
+  return btn;
 }
 
 function answerKey(categoryId, qIndex) {
@@ -90,9 +156,14 @@ function renderForm() {
       const qWrap = document.createElement("div");
       qWrap.className = "question";
 
+      const qHead = document.createElement("div");
+      qHead.className = "question-head";
       const qLabel = document.createElement("p");
-      qLabel.textContent = questionText(q);
-      qWrap.appendChild(qLabel);
+      qLabel.textContent = q.text;
+      qHead.appendChild(qLabel);
+      const qInfo = createInfoButton("Plain-language explanation", questionPlainText(q));
+      if (qInfo) qHead.appendChild(qInfo);
+      qWrap.appendChild(qHead);
 
       const scale = document.createElement("div");
       scale.className = "scale";
@@ -251,9 +322,15 @@ function renderGroup(title, items, band) {
       h3.textContent = `${item.icon} ${item.label} — ${item.avg.toFixed(1)}/5`;
       card.appendChild(h3);
 
+      const reco = item.recommendations[band];
+      const recWrap = document.createElement("div");
+      recWrap.className = "result-rec";
       const rec = document.createElement("p");
-      rec.textContent = recommendationText(item.recommendations[band]);
-      card.appendChild(rec);
+      rec.textContent = reco.text;
+      recWrap.appendChild(rec);
+      const recInfo = createInfoButton("Plain-language explanation", recommendationPlainText(reco));
+      if (recInfo) recWrap.appendChild(recInfo);
+      card.appendChild(recWrap);
 
       wrap.appendChild(card);
     });
@@ -267,18 +344,15 @@ function hasAnyAnswers() {
 
 function buildResultsText() {
   const results = computeScores();
-  const modeNote = state.mode === "simple"
-    ? "Language: simple"
-    : "Language: business";
   const lines = [
     "BUSINESS SELF-EVALUATION RESULTS",
     `Generated: ${new Date().toLocaleString()}`,
-    modeNote,
+    "Language: business",
     "",
   ];
   results.forEach((r) => {
     lines.push(`${r.label}: ${r.avg ? r.avg.toFixed(1) : "N/A"}/5 (${r.band})`);
-    if (r.band !== "unanswered") lines.push(`  -> ${recommendationText(r.recommendations[r.band])}`);
+    if (r.band !== "unanswered") lines.push(`  -> ${r.recommendations[r.band].text}`);
   });
   return lines.join("\n");
 }
@@ -591,7 +665,7 @@ function writeToClipboard(text, done) {
 
 function buildSubmissionPayload() {
   return {
-    language: state.mode,
+    language: LANGUAGE,
     categories: computeScores().map((r) => ({
       id: r.id,
       label: r.label,
@@ -746,9 +820,7 @@ function resetAll() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  updateToggleLabel();
   renderForm();
-  document.getElementById("toggle-btn").addEventListener("click", toggleMode);
   document.getElementById("evaluate-btn").addEventListener("click", evaluate);
   document.getElementById("submit-btn").addEventListener("click", submitResults);
   document.getElementById("export-btn").addEventListener("click", exportResults);
@@ -769,4 +841,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
   renderHistory();
+
+  document.addEventListener("click", (event) => {
+    const overlay = getInfoOverlay();
+    if (overlay.hidden) return;
+    if (overlay.contains(event.target)) return;
+    if (activeInfoButton && activeInfoButton.contains(event.target)) return;
+    closeInfoOverlay();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeInfoOverlay();
+  });
+  window.addEventListener("resize", closeInfoOverlay);
+  window.addEventListener("scroll", closeInfoOverlay, true);
 });

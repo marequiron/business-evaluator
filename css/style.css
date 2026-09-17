@@ -30,20 +30,63 @@ header {
 header h1 { margin: 0 0 8px 0; }
 header p { max-width: 700px; margin: 0 auto; opacity: 0.95; }
 
-.mode-toggle { margin-top: 16px; }
-
-#toggle-btn {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.5);
+.overlay-hint {
+  margin-top: 10px !important;
+  font-size: 13px;
+  opacity: 0.85;
 }
 
-#toggle-btn:hover { background: rgba(255, 255, 255, 0.25); }
-
-#toggle-btn.active {
-  background: white;
+.info-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  background: var(--card-bg);
   color: var(--accent);
-  border-color: white;
+  font-size: 12px;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.info-btn:hover,
+.info-btn:focus,
+.info-btn[aria-expanded="true"] {
+  background: var(--accent);
+  color: white;
+}
+
+.info-overlay {
+  position: fixed;
+  z-index: 1000;
+  max-width: 320px;
+  background: #1f2430;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.info-overlay-title {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+
+.info-overlay-text {
+  margin: 0;
+  outline: none;
 }
 
 main {
@@ -64,6 +107,14 @@ main {
 
 .question { margin-bottom: 16px; }
 .question p { margin: 0 0 8px 0; font-weight: 500; }
+
+.question-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.question-head p { flex: 1; }
 
 .scale {
   display: flex;
@@ -329,6 +380,14 @@ button.danger {
 .result-card h3 { margin: 0 0 6px 0; font-size: 16px; }
 .result-card p { margin: 0; color: var(--text); }
 
+.result-rec {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.result-rec p { flex: 1; }
+
 footer {
   text-align: center;
   color: var(--muted);
@@ -345,7 +404,8 @@ footer {
   body.printing footer,
   body.printing #embed-container,
   body.printing #history,
-  body.printing .mode-toggle {
+  body.printing .info-btn,
+  body.printing .info-overlay {
     display: none !important;
   }
 

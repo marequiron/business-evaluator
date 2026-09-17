@@ -21,9 +21,10 @@ HTML/CSS/JS so it's easy to run, deploy (e.g., GitHub Pages), and extend.
 - `js/app.js` — rendering + logic. Builds the form from `CATEGORIES`,
   stores answers in `localStorage` (key: `business-evaluator-answers-v1`),
   computes per-category averages, and renders the bar chart (with band
-  legend) + grouped result cards. Also handles a "simple vs. standard"
-  wording toggle (mode key `business-evaluator-mode-v1`, default `simple`),
-  the "Export Results" (.txt download) and "Print / Save as PDF"
+  legend) + grouped result cards. Questions and recommendations show the
+  business wording; a ⓘ button opens a plain-language overlay (`createInfoButton`,
+  `toggleInfoOverlay`, `#info-overlay`) with the item's `simple` text. Also
+  handles the "Export Results" (.txt download) and "Print / Save as PDF"
   (`window.print()` + print stylesheet) buttons, "Submit results" (see
   below), "Reset", and a history/compare panel: evaluating auto-saves a
   snapshot (`business-evaluator-history-v1`, capped at 100) with manual
@@ -64,6 +65,11 @@ or use the VS Code "Live Server" extension.
   `api/src/validate.js` and the fixtures in `api/test/submit.test.js` too.
 - Change scoring thresholds (what counts as weak/ok/strong) → `SCORE_BANDS`
   in `js/data.js`.
+- Change the plain-language overlay (the ⓘ buttons) → its text comes from the
+  `simple` fields in `js/data.js`; the behavior lives in `createInfoButton()`
+  and `toggleInfoOverlay()` in `js/app.js` (single `#info-overlay` element,
+  positioned near the clicked button and dismissed on outside-click/Esc).
+  Questions always display `text` (business); there is no global wording toggle.
 - Add a results export format (PDF, CSV, email) → extend `exportResults()`
   in `js/app.js`; keep the existing .txt export working unless told to
   replace it. (A zero-dependency "Print / Save as PDF" button already exists

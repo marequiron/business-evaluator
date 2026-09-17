@@ -81,12 +81,13 @@ All content lives in `js/data.js`:
 - Adjust the score thresholds (`SCORE_BANDS`) that decide what counts as a
   Weakness (≤2.5), Opportunity (2.5–3.8), or Strength (>3.8) — tune these to
   taste.
-- Change wording mode defaults / toggle labels are handled in `js/app.js`
-  (`DEFAULT_MODE`).
+- Questions/recommendations show the business wording by default; each has a
+  ⓘ button that opens a plain-language overlay with the `simple` text. The
+  overlay behavior lives in `js/app.js`.
 
 ## Submitting results
-The "📤 Submit results" button sends the evaluation (in the currently selected
-language) so leadership can collect/aggregate results. There are two targets,
+The "📤 Submit results" button sends the evaluation so leadership can
+collect/aggregate results. There are two targets,
 configured in `js/data.js` → `SUBMIT_FORM`:
 
 - `apiUrl` — (Phase 1) the secure submission endpoint,
