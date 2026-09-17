@@ -173,12 +173,28 @@ function renderResults() {
   resultsEl.scrollIntoView({ behavior: "smooth" });
 }
 
+function evaluate() {
+  renderResults();
+  const snap = createSnapshot(null);
+  if (snap) renderHistory();
+}
+
 function renderChart(results) {
   const wrap = document.createElement("div");
   wrap.className = "chart-wrap";
   const title = document.createElement("h2");
   title.textContent = "Score Overview (1-5 per category)";
   wrap.appendChild(title);
+
+  const legend = document.createElement("div");
+  legend.className = "chart-legend";
+  [["Strength (> 3.8)", "legend-strength"], ["Opportunity (2.5\u20133.8)", "legend-opportunity"], ["Weakness (\u2264 2.5)", "legend-weakness"]].forEach((pair) => {
+    const item = document.createElement("span");
+    item.className = "legend-item";
+    item.innerHTML = "<span class=\"legend-dot " + pair[1] + "\"></span>" + pair[0];
+    legend.appendChild(item);
+  });
+  wrap.appendChild(legend);
 
   results.forEach((r) => {
     const row = document.createElement("div");
@@ -275,6 +291,258 @@ function exportResults() {
   a.download = "business-evaluation-results.txt";
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function printResults() {
+  if (!hasAnyAnswers()) {
+    alert("Answer at least one question, then evaluate, before printing.");
+    return;
+  }
+  if (!document.getElementById("results").childElementCount) {
+    renderResults();
+  } else {
+    renderHistory();
+  }
+  const gen = document.getElementById("print-generated");
+  if (gen) gen.textContent = "Generated: " + new Date().toLocaleString();
+  document.body.classList.add("printing");
+  try {
+    window.print();
+  } finally {
+    document.body.classList.remove("printing");
+  }
+}
+
+const HISTORY_KEY = "business-evaluator-history-v1";
+const HISTORY_MAX = 100;
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveHistory(history) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+function snapshotPayload() {
+  return computeScores().map((r) => ({
+    id: r.id,
+    label: r.label,
+    icon: r.icon,
+    avg: r.avg,
+    band: r.band,
+  }));
+}
+
+function createSnapshot(label) {
+  if (!hasAnyAnswers()) return null;
+  const history = loadHistory();
+  const snap = {
+    id: "snap_" + Date.now(),
+    label: label || "Assessment - " + new Date().toLocaleString(),
+    createdAt: Date.now(),
+    scores: snapshotPayload(),
+  };
+  history.push(snap);
+  saveHistory(history.slice(-HISTORY_MAX));
+  return snap;
+}
+
+function saveSnapshotClick() {
+  const label = prompt("Give this snapshot a label (optional):");
+  if (label === null) return;
+  const snap = createSnapshot(label || undefined);
+  if (snap) {
+    renderHistory();
+    alert("Snapshot saved.");
+  } else {
+    alert("Answer at least one question before saving a snapshot.");
+  }
+}
+
+function renderHistory() {
+  const listEl = document.getElementById("history-list");
+  const compareEl = document.getElementById("compare-view");
+  if (!listEl) return;
+
+  listEl.innerHTML = "";
+  const history = loadHistory();
+
+  if (history.length === 0) {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = "No saved snapshots yet. Click \"Evaluate My Business\" to auto-save, or \"Save snapshot\" to record one manually.";
+    listEl.appendChild(p);
+    compareEl.hidden = true;
+    return;
+  }
+
+  const h2 = document.createElement("h2");
+  h2.textContent = "Past snapshots (" + history.length + ")";
+  listEl.appendChild(h2);
+
+  [...history].reverse().forEach((s) => {
+    const row = document.createElement("div");
+    row.className = "history-row";
+
+    const info = document.createElement("div");
+    info.className = "history-info";
+    const lbl = document.createElement("span");
+    lbl.className = "history-label";
+    lbl.textContent = s.label;
+    const date = document.createElement("span");
+    date.className = "history-date";
+    date.textContent = new Date(s.createdAt).toLocaleString();
+    info.appendChild(lbl);
+    info.appendChild(date);
+
+    const actions = document.createElement("div");
+    actions.className = "history-actions";
+
+    const cmpBtn = document.createElement("button");
+    cmpBtn.type = "button";
+    cmpBtn.className = "secondary";
+    cmpBtn.textContent = "Compare";
+    cmpBtn.addEventListener("click", () => showCompare(s));
+    actions.appendChild(cmpBtn);
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "danger";
+    delBtn.textContent = "Delete";
+    delBtn.addEventListener("click", () => {
+      if (!confirm("Delete this snapshot?")) return;
+      saveHistory(loadHistory().filter((x) => x.id !== s.id));
+      renderHistory();
+    });
+    actions.appendChild(delBtn);
+
+    row.appendChild(info);
+    row.appendChild(actions);
+    listEl.appendChild(row);
+  });
+
+  compareEl.hidden = true;
+}
+
+function showCompare(snap) {
+  const listEl = document.getElementById("history-list");
+  const compareEl = document.getElementById("compare-view");
+  if (!listEl || !compareEl) return;
+
+  listEl.hidden = true;
+  compareEl.hidden = false;
+  compareEl.innerHTML = "";
+
+  const back = document.createElement("button");
+  back.type = "button";
+  back.className = "secondary";
+  back.textContent = "\u2190 Back to history";
+  back.addEventListener("click", () => {
+    listEl.hidden = false;
+    compareEl.hidden = true;
+    renderHistory();
+  });
+
+  const h2 = document.createElement("h2");
+  h2.textContent = "Compare current vs \"" + snap.label + "\"";
+
+  const current = computeScores();
+  const table = document.createElement("table");
+  table.className = "compare-table";
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  ["Category", "Current", "", "Snapshot", "Change"].forEach((t) => {
+    const th = document.createElement("th");
+    th.textContent = t;
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  const pastScores = Array.isArray(snap.scores) ? snap.scores : [];
+
+  current.forEach((c) => {
+    const past = pastScores.find((s) => s.id === c.id);
+    const tr = document.createElement("tr");
+
+    const nameTd = document.createElement("td");
+    nameTd.textContent = c.icon + " " + c.label;
+
+    const curTd = document.createElement("td");
+    curTd.textContent = c.avg ? c.avg.toFixed(1) : "\u2014";
+
+    const arrowTd = document.createElement("td");
+    arrowTd.textContent = "\u2192";
+
+    const pastTd = document.createElement("td");
+    pastTd.textContent = (past && past.avg != null) ? past.avg.toFixed(1) : "\u2014";
+
+    const deltaTd = document.createElement("td");
+    if (past && c.avg != null && past.avg != null) {
+      const delta = c.avg - past.avg;
+      deltaTd.textContent = (delta > 0 ? "+" : "") + delta.toFixed(1);
+      deltaTd.className = delta > 0 ? "delta-up" : (delta < 0 ? "delta-down" : "delta-flat");
+    } else {
+      deltaTd.textContent = "\u2014";
+    }
+
+    tr.appendChild(nameTd);
+    tr.appendChild(curTd);
+    tr.appendChild(arrowTd);
+    tr.appendChild(pastTd);
+    tr.appendChild(deltaTd);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+
+  compareEl.appendChild(back);
+  compareEl.appendChild(h2);
+  compareEl.appendChild(table);
+}
+
+function exportHistoryJson() {
+  const history = loadHistory();
+  if (history.length === 0) {
+    alert("No snapshots to export yet.");
+    return;
+  }
+  const blob = new Blob([JSON.stringify(history, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "business-evaluator-history.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importHistoryJson(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!Array.isArray(parsed)) throw new Error("not an array");
+      const valid = parsed.filter((s) => s && typeof s.id === "string" && Array.isArray(s.scores));
+      if (valid.length === 0) throw new Error("no valid snapshots found");
+      const merged = loadHistory();
+      const known = new Set(merged.map((s) => s.id));
+      valid.forEach((s) => { if (!known.has(s.id)) merged.push(s); });
+      saveHistory(merged.slice(-HISTORY_MAX));
+      renderHistory();
+      alert("Imported " + valid.length + " snapshot(s).");
+    } catch (e) {
+      alert("Could not import that file: " + e.message);
+    }
+  };
+  reader.readAsText(file);
 }
 
 function buildPrefilledUrl(text) {
@@ -481,8 +749,24 @@ document.addEventListener("DOMContentLoaded", () => {
   updateToggleLabel();
   renderForm();
   document.getElementById("toggle-btn").addEventListener("click", toggleMode);
-  document.getElementById("evaluate-btn").addEventListener("click", renderResults);
+  document.getElementById("evaluate-btn").addEventListener("click", evaluate);
   document.getElementById("submit-btn").addEventListener("click", submitResults);
   document.getElementById("export-btn").addEventListener("click", exportResults);
+  document.getElementById("print-btn").addEventListener("click", printResults);
   document.getElementById("reset-btn").addEventListener("click", resetAll);
+
+  const saveSnapBtn = document.getElementById("save-snapshot-btn");
+  if (saveSnapBtn) saveSnapBtn.addEventListener("click", saveSnapshotClick);
+  const exportHistBtn = document.getElementById("export-history-btn");
+  if (exportHistBtn) exportHistBtn.addEventListener("click", exportHistoryJson);
+  const importHistBtn = document.getElementById("import-history-btn");
+  const importFile = document.getElementById("import-history-file");
+  if (importHistBtn && importFile) {
+    importHistBtn.addEventListener("click", () => importFile.click());
+    importFile.addEventListener("change", (e) => {
+      importHistoryJson(e.target.files[0]);
+      e.target.value = "";
+    });
+  }
+  renderHistory();
 });

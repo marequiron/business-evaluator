@@ -27,7 +27,7 @@ const SCORE_BANDS = {
  * Content only (no logic):
  *  - apiUrl: OPTIONAL (Phase 1). POST endpoint for the Azure Functions API,
  *    e.g. "https://<app>.azurestaticapps.net/api/submit". When set, the app
- *    posts the structured evaluation (language + 7 category scores/bands) and
+ *    posts the structured evaluation (language + 8 category scores/bands) and
  *    falls back to the form methods below only if the request fails.
  *  - embedUrl: OPTIONAL. The iframe src from Microsoft Forms → Share → Embed,
  *    e.g. "https://forms.office.com/Pages/ResponsePage.aspx?id=<id>&embed=true".
@@ -339,6 +339,47 @@ const CATEGORIES = [
       strength: {
         text: "Use your planning discipline to formally evaluate the new opportunity you've identified — a small pilot or test is a strong next step.",
         simple: "You plan well — use that to test the new opportunity you found. A small trial is the smartest next step."
+      }
+    }
+  },
+  {
+    id: "legal",
+    label: "Legal & Compliance",
+    icon: "⚖️",
+    questions: [
+      {
+        text: "We maintain the required licenses, permits, and registrations for our business.",
+        simple: "We keep all the licenses, permits, and registrations our business legally needs."
+      },
+      {
+        text: "Our contracts, terms, and agreements are reviewed for legal soundness.",
+        simple: "The contracts and agreements we sign are checked so they are fair and legal."
+      },
+      {
+        text: "We comply with the data protection and privacy rules that apply to us.",
+        simple: "We keep customer and employee information private and follow the rules for handling it."
+      },
+      {
+        text: "Our tax filings and required regulatory reports are kept up to date.",
+        simple: "We file our taxes and required business reports on time."
+      },
+      {
+        text: "We follow employment and workplace-safety rules for our team.",
+        simple: "We follow the rules about hiring, pay, and keeping the workplace safe."
+      }
+    ],
+    recommendations: {
+      weakness: {
+        text: "Run a basic legal-and-licensing checklist: confirm every required license/registration, set reminders for renewal dates, and have contracts reviewed by a small-business legal resource. Keep one folder with each registration and its due date.",
+        simple: "Make a simple list of every license, permit, and registration your business needs, with its renewal date. Before signing important contracts, have a small-business lawyer (or a reputable online service) take a quick look. Keep all the paperwork in one folder."
+      },
+      opportunity: {
+        text: "Introduce an annual compliance review (licenses, taxes, privacy, contracts) and use a consistent simple contract template so repeat agreements are safe and consistent.",
+        simple: "Once a year, do a quick check that your licenses, taxes, and privacy paperwork are all up to date. Use a standard, simple contract for repeat agreements so nobody has to reinvent one each time."
+      },
+      strength: {
+        text: "Turn your strong compliance footing into a trust advantage: formalize a compliance calendar, document your privacy approach, and highlight these as trust signals with customers and partners.",
+        simple: "You are on top of the legal basics — put your compliance tasks on a simple calendar, write down how you protect customer information, and tell customers and partners about it as a sign of trust."
       }
     }
   }

@@ -9,7 +9,7 @@
 <body>
   <header>
     <h1>Business Self-Evaluation Tool</h1>
-    <p>Answer 1-5 rating questions across 7 categories to reveal your business's
+    <p>Answer 1-5 rating questions across 8 categories to reveal your business's
       strengths, weaknesses, and opportunities — with tailored recommendations.</p>
     <div class="mode-toggle">
       <button id="toggle-btn" type="button" class="secondary">Use simple language</button>
@@ -23,11 +23,28 @@
       <button id="evaluate-btn" type="button">Evaluate My Business</button>
       <button id="submit-btn" type="button" class="secondary">📤 Submit results</button>
       <button id="export-btn" type="button" class="secondary">Export Results</button>
+      <button id="print-btn" type="button" class="secondary">🖨️ Print / Save as PDF</button>
       <button id="reset-btn" type="button" class="danger">Reset</button>
+    </div>
+
+    <div id="print-header" aria-hidden="true">
+      <h1>Business Self-Evaluation Report</h1>
+      <p id="print-generated"></p>
     </div>
 
     <section id="results"></section>
     <section id="embed-container"></section>
+
+    <section id="history" class="history">
+      <div class="history-toolbar">
+        <button id="save-snapshot-btn" type="button" class="secondary">💾 Save snapshot</button>
+        <button id="export-history-btn" type="button" class="secondary">⬇️ Export history</button>
+        <button id="import-history-btn" type="button" class="secondary">⬆️ Import history</button>
+        <input type="file" id="import-history-file" accept="application/json" hidden />
+      </div>
+      <div id="history-list"></div>
+      <div id="compare-view" hidden></div>
+    </section>
   </main>
 
   <footer>
