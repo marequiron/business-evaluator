@@ -9,7 +9,7 @@
  * Contract (mirrors the front-end's buildSubmissionPayload()):
  *   {
  *     language: "simple" | "standard",
- *     categories: [                       // exactly 7, one per assessment category
+ *     categories: [                       // exactly 8, one per assessment category
  *       { id, label, score, band }        // score: number 0-5, or null when band === "unanswered"
  *     ]
  *   }
@@ -19,7 +19,7 @@ const MAX_BODY_BYTES = 10 * 1024; // 10 KB
 
 const ALLOWED_LANGUAGES = new Set(['simple', 'standard']);
 const ALLOWED_BANDS = new Set(['weakness', 'opportunity', 'strength', 'unanswered']);
-const REQUIRED_CATEGORY_COUNT = 7;
+const REQUIRED_CATEGORY_COUNT = 8;
 const MAX_SCORE = 5;
 const MAX_LABEL_LENGTH = 120;
 

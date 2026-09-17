@@ -15,7 +15,7 @@ let passed = 0;
 let failed = 0;
 
 function test(name, fn) {
-  Promise.resolve()
+  return Promise.resolve()
     .then(fn)
     .then(() => { passed += 1; console.log('PASS: ' + name); })
     .catch((err) => {
@@ -25,7 +25,7 @@ function test(name, fn) {
     });
 }
 
-const CATEGORY_IDS = ['finance', 'marketing', 'operations', 'hr', 'technology', 'customer', 'strategy'];
+const CATEGORY_IDS = ['finance', 'marketing', 'operations', 'hr', 'technology', 'customer', 'strategy', 'legal'];
 
 function validPayload(overrides) {
   const payload = {
@@ -61,10 +61,10 @@ function call(bodyText, opts) {
 }
 
 (async () => {
-  await test('validate: accepts a valid 7-category payload', () => {
+  await test('validate: accepts a valid 8-category payload', () => {
     const r = validateSubmit(validPayload());
     assert.strictEqual(r.ok, true);
-    assert.strictEqual(r.data.categories.length, 7);
+    assert.strictEqual(r.data.categories.length, 8);
     assert.strictEqual(r.data.language, 'simple');
   });
 
@@ -90,7 +90,7 @@ function call(bodyText, opts) {
     assert.strictEqual(validateSubmit(p).ok, false);
   });
 
-  await test('validate: rejects non-7 category count', () => {
+  await test('validate: rejects non-8 category count', () => {
     const p = validPayload();
     p.categories.pop();
     assert.strictEqual(validateSubmit(p).ok, false);
