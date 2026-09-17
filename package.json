@@ -4,6 +4,7 @@
   "description": "Static web app: business self-evaluation tool (Strengths/Weaknesses/Opportunities/Recommendations)",
   "private": true,
   "scripts": {
-    "start": "npx --yes serve ."
+    "start": "npx --yes serve .",
+    "local": "node serve.js"
   }
 }

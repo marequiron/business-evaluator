@@ -20,6 +20,9 @@ accounts, no data leaving the machine.
 ## Quick start
 Pick whichever is easiest for you:
 - **Simplest:** double-click `index.html` to open it in your browser.
+- **Local server (no install):** `npm run local` → http://localhost:4173/
+  (uses the bundled zero-dependency `serve.js`; override the port with
+  `PORT`, e.g. `$env:PORT=8080; npm run local` in PowerShell).
 - **VS Code:** install the "Live Server" extension, right-click
   `index.html` → "Open with Live Server".
 - **Node (optional):** `npm start` (runs `npx serve .`).
@@ -38,6 +41,7 @@ business-evaluator/
 ├── AGENTS.md            # briefing file so opencode understands this project
 ├── opencode.json        # opencode project config (points at AGENTS.md)
 ├── setup.ps1 / setup.sh # one-time setup helpers (Windows / macOS-Linux)
+├── serve.js            # zero-dependency local static server (npm run local)
 └── package.json
 ```
 
