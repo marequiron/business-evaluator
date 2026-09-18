@@ -1,0 +1,42 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Business Evaluator",
+  "version": "0.1.0",
+"identifier": "com.businessevaluator.tool",
+  "build": {
+    "frontendDist": "app-dist",
+    "devUrl": "http://localhost:4173",
+    "beforeDevCommand": "npm run app:sync && npm run local",
+    "beforeBuildCommand": "npm run app:sync"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Business Evaluator",
+        "width": 960,
+        "height": 720,
+        "minWidth": 640,
+        "minHeight": 480,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    }
+  }
+}

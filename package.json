@@ -6,6 +6,24 @@
   "scripts": {
     "start": "npx --yes serve .",
     "local": "node serve.js",
-    "test": "node test/analyzer.test.js"
+    "test": "node test/analyzer.test.js && node test/app.smoke.test.js",
+    "app:sync": "node scripts/sync-app.mjs",
+    "app:dev": "tauri dev",
+    "app:build": "tauri build",
+    "app:build:no-bundle": "tauri build --no-bundle",
+    "app:run": "node scripts/run-app.mjs",
+    "smoke:webview": "node scripts/smoke-webview.mjs",
+    "app:android": "tauri android dev",
+    "app:android:build": "tauri android build",
+    "app:ios": "tauri ios dev",
+    "app:ios:build": "tauri ios build"
+  },
+  "devDependencies": {
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/cli": "^2.11.4",
+    "jsdom": "^25.0.1"
+  },
+  "dependencies": {
+    "@tauri-apps/plugin-opener": "^2.5.5"
   }
 }

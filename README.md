@@ -37,7 +37,7 @@ Pick whichever is easiest for you:
 > (it loads a WebAssembly module and a model) must be served over HTTP — use
 > `npm run local`.
 
-Run the front-end unit tests with `npm test` (plain Node, no install needed).
+Run the front-end unit tests with `npm test` (plain Node, no install needed). This now runs both `test/analyzer.test.js` (pure helpers + providers) **and** `test/app.smoke.test.js` (jsdom assembly smoke covering the full front-end in CI).
 
 ## Project layout
 ```
@@ -49,7 +49,8 @@ business-evaluator/
 ├── js/analyzer-parse.js # pure doc→text + prompt/parse helpers (used by app + tests)
 ├── js/analyzer.js       # provider abstraction: on-device (wllama) / api / mock
 ├── js/vendor/wllama/    # vendored on-device engine (MIT) — see its README.txt
-├── test/analyzer.test.js # plain-Node unit tests (npm test)
+├── test/               # npm test (analyzer unit + jsdom app assembly)
+├── docs/               # Phase B smoke checklist, etc.
 ├── api/                # Phase 1 submission service (Azure Functions → Cosmos DB)
 │   ├── src/            # validate.js, handler.js, store.js, functions/submit.js
 │   └── test/           # plain-Node unit tests (npm test in api/)
@@ -58,6 +59,9 @@ business-evaluator/
 ├── opencode.json        # opencode project config (points at AGENTS.md)
 ├── setup.ps1 / setup.sh # one-time setup helpers (Windows / macOS-Linux)
 ├── serve.js            # zero-dependency local static server (npm run local)
+├── scripts/
+│   ├── sync-app.mjs      # copies index.html/css/js → src-tauri/app-dist/
+│   └── build-desktop.ps1 # MSVC+cargo env loader, -Dev/-Probe modes
 └── package.json
 ```
 
@@ -146,6 +150,12 @@ See `PHASE-1-PLAN.md` for the step-by-step roadmap to a managed rollout
 data-privacy note to bring to the approval gate. The `api/` submission
 service is already scaffolded and unit-tested — run `npm install && npm test`
 inside `api/` to verify.
+
+## Installable apps for Windows/macOS/Linux/iOS/Android
+The web app is the single source of truth; a **Tauri v2** wrapper adds
+installable desktop + mobile builds with store distribution. The concrete
+implementation plan (layout, toolchain, config, CSP, testing matrix, CI) is
+in `PLATFORM-APP-PLAN.md`. Nothing in it changes the web/SWA distribution.
 
 ## Roadmap ideas (good opencode prompts)
 - A "benchmark" mode comparing scores against industry averages.
