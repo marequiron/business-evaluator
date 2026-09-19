@@ -7,7 +7,10 @@ crashing). Phase B passed: **Windows runtime smoke** — a jsdom-based assembly
 test suite (32 checks total) plus a real-WebView2 DevTools-protocol probe that
 verified the app shell boots on `http://tauri.localhost/`, the wllama ESM
 module loads, and the 8.4 MB `.wasm` is served valid over the Tauri asset
-protocol. See `docs/smoke-checklist-phase-b.md`. Phases C–F (§8) pending.
+protocol. See `docs/smoke-checklist-phase-b.md`. **Phase C** (Linux + macOS
+builds via CI) in progress 2026-09-19 — workflow pushed (`75fa384`), matrix run
+in flight. **Phase D** (Android) started 2026-09-19: JDK17 + Android SDK + emulator
+installed; `tauri android` template + emulator run + AAB pending (§8).
 **Decision (Sept 17 session):** All platforms + app stores · **Tauri v2** ·
 wllama on-device analyzer kept as-is (CPU/WASM fallback, small model) · deep
 links / SQLite-backed store / in-app OAuth **deferred**.
@@ -335,12 +338,16 @@ ios:             macos-latest + Xcode + code-signing secrets → tauri ios build
    + 8.4 MB `.wasm` (valid, HTTP 200) served over the asset protocol; offline
    `Wllama` construction OK; 32/32 tests green. Manual on-device model
    download/stream (CPU or WebGPU) still to be done by a human once.)
-3. **Phase C — Linux + macOS builds via CI.** Confirm bundles build and app runs
-   (act on macOS runner for WKWebView print/copy). No heavy testing yet.
-4. **Phase D — Android.** Install JDK17 + Android SDK/emulator; `tauri android
-   dev` against an emulator; run smoke items incl. 10; tune smaller-model note.
-   Produce a signed **AAB**. **Exit gate:** app runs in emulator; AAB uploads
-   to internal Play track.
+3. **Phase C — Linux + macOS builds via CI. IN PROGRESS (2026-09-19).** CI
+   workflow (`app-build.yml`) committed + pushed (`75fa384`); first 3-OS matrix
+   run auto-triggered. Remaining: watch matrix green; macOS WKWebView print/copy
+   human check.
+4. **Phase D — Android. IN PROGRESS (2026-09-19).** JDK17 (Temurin 17.0.20.101)
+   + Android SDK cmdline-tools installed; platform-35, build-tools 35.0.0,
+   platform-tools, emulator + android-35 google_apis x86_64 system image all
+   present. `tauri android dev` against an emulator still to run; smoke items
+   incl. 10; tune smaller-model note. Produce a signed **AAB**. **Exit gate:**
+   app runs in emulator; AAB uploads to internal Play track.
 5. **Phase E — iOS.** On a Mac (or CI runner): `tauri ios init` (commit `gen/`),
    simulator smoke, signing → `.ipa` → TestFlight. **Exit gate:** TestFlight
    build distributed to pilot.
