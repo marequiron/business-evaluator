@@ -1,51 +1,69 @@
 /**
  * data.js
- * Defines the assessment categories, questions, and recommendation text
- * used by the Business Self-Evaluation Tool.
+ * Defines the assessment categories, questions, recommendations, business
+ * profile fields, readiness levels, and resilience scenarios for the
+ * Business Growth & Resilience Coach.
  *
- * HOW TO EXTEND (for you or for opencode):
- *  - Add a new category by pushing a new object into CATEGORIES.
- *  - Each category needs: id, label, icon (emoji), questions[], recommendations{}
- *  - questions[] items are objects: { text, simple }
- *      - text   -> the standard/business wording
- *      - simple -> the plain-language wording for users who want it
- *    Both are Likert 1-5 statements, phrased so that "5 = strongly agree"
- *    is always the GOOD outcome.
- *  - recommendations{} has three keys: weakness, opportunity, strength.
- *    Each one is an object: { text, simple }. They are shown depending on
- *    the computed score band for that category.
+ * HOW TO EXTEND:
+ *  - CATEGORIES: push a new category object { id, label, icon, questions[],
+ *    recommendations{} } and optionally `help` (a one-line tooltip shown next
+ *    to the section title). questions[] items are { text, simple }. text is
+ *    the business wording; simple is the plain-language version used by the
+ *    ⓘ overlay. Keep "5 = strongly agree / fully in place" as the GOOD end.
+ *  - recommendations{} has keys weakness / opportunity / strength, each
+ *    { text, simple }. They are used by the dashboard and fed into the
+ *    action-plan and roadmap suggestions.
+ *  - PROFILE_FIELDS: opening "about your business" step. Each field has a
+ *    key, label, type (text | select), optional `options` (for selects),
+ *    and a `required` flag.
+ *  - SCENARIOS: optional resilience scenarios. Each has id, label, icon,
+ *    description, and the six recovery prompts shown in Phase 5.
+ *  - READINESS_LEVELS: bands that translate the overall 0-100 score into
+ *    supportive guidance. Everything in here stays encouraging.
  */
 
 const SCORE_BANDS = {
-  WEAKNESS_MAX: 2.5,   // avg score <= this => Weakness
-  OPPORTUNITY_MAX: 3.8 // avg score <= this (and > WEAKNESS_MAX) => Opportunity
-  // anything above OPPORTUNITY_MAX => Strength
+  WEAKNESS_MAX: 2.5,
+  OPPORTUNITY_MAX: 3.8
+};
+
+/* Readiness levels from the overall 0-100 score. Always supportive. */
+const READINESS_LEVELS = [
+  { min: 80, label: "Well positioned to grow", hint: "You have a strong foundation. Focus on momentum and protecting what is working." },
+  { min: 60, label: "Building momentum", hint: "Solid progress. A few focused actions can strengthen this part of the business." },
+  { min: 40, label: "Take your next step", hint: "You have a good foundation in several areas. Choose one priority and build." },
+  { min: 0, label: "Laying your foundation", hint: "Every business starts here. Pick one small improvement and keep the habits consistent." }
+];
+
+/*
+ * MANAGED_ACCESS — opt-in, sign-in-gated deployments (Azure Static Web Apps).
+ * When `enabled` is false (default) the app is the original privacy-first
+ * local tool: no accounts, no server. When a deployment sets it to true, the
+ * app runs behind SWA's Entra ID sign-in and `js/managed.js` gates the shell
+ * until the signed-in user completes one-time onboarding. Content only.
+ */
+const MANAGED_ACCESS = {
+  enabled: false,
+  apiBase: "/api",
+  authEndpoint: "/.auth/me",
+  signInPath: "/.auth/login/aad",
+  signOutPath: "/.auth/logout",
+  allowedTenantId: "",
+  displayNameMax: 120,
+  importMaxBytes: 524288,
+  languages: [
+    { value: "simple", label: "Plain language" },
+    { value: "standard", label: "Standard wording" }
+  ],
+  recognizedRoles: ["Evaluator", "Reviewer", "Administrator"],
+  allowGuestImport: false
 };
 
 /*
  * SUBMIT_FORM — where "Submit results" sends the evaluation.
- * Content only (no logic):
- *  - apiUrl: OPTIONAL (Phase 1). POST endpoint for the Azure Functions API,
- *    e.g. "https://<app>.azurestaticapps.net/api/submit". When set, the app
- *    posts the structured evaluation (language + 8 category scores/bands) and
- *    falls back to the form methods below only if the request fails.
- *  - embedUrl: OPTIONAL. The iframe src from Microsoft Forms → Share → Embed,
- *    e.g. "https://forms.office.com/Pages/ResponsePage.aspx?id=<id>&embed=true".
- *    When set, clicking Submit renders the real form inline below the results
- *    (with a Copy results button + optional Open-in-new-tab link) instead of
- *    redirecting. The user pastes the copied results into the form's field.
- *  - formUrl: plain share link to the Microsoft Form, e.g.
- *      "https://forms.office.com/r/AbCd123"
- *    Fallback target when embedUrl is empty — results are copied to the
- *    clipboard and the form is opened for the user to paste them into.
- *    Also powers the "Open form in new tab" link when embedUrl is set.
- *  - prefillTemplate: OPTIONAL. In Microsoft Forms use "⋯ > Get Pre-filled URL",
- *    put a dummy answer in the "Your evaluation results" field, copy that URL,
- *    and paste it here. When set, the app replaces every form-field value
- *    (params starting with "r") with the full results text, so the form opens
- *    already pre-filled. The prefill link is offered as a shortcut alongside
- *    the embedded form when embedUrl is also configured.
- * Leave all fields empty to keep the copy-only behaviour.
+ * Content only (no logic); either empty for copy-only behaviour, or configured
+ * with apiUrl / embedUrl / formUrl / prefillTemplate (see comments in the
+ * original tool for the full contract). Kept for continuity.
  */
 const SUBMIT_FORM = {
   apiUrl: "",
@@ -56,14 +74,7 @@ const SUBMIT_FORM = {
 
 /*
  * ANALYZE — optional on-device document analysis (score assist).
- * Config only (no logic); the behavior lives in js/analyzer.js + js/app.js.
- *  - provider: "wllama" (on-device, default), "api" (Phase 1 backend), "mock".
- *  - moduleUrl/wasmUrl: the vendored engine in js/vendor/wllama/ (no CDN).
- *  - modelRepo/modelFile: the GGUF weights, downloaded once from Hugging Face
- *    and cached by the browser. Swap these for a smaller/larger model as needed
- *    (e.g. bartowski/Llama-3.2-1B-Instruct-GGUF → Llama-3.2-1B-Instruct-Q4_K_M.gguf).
- *  - maxChars: how much of the document is sent to the model.
- *  - apiUrl: only used when provider is "api".
+ * Config only; behavior lives in js/analyzer.js + js/app.js.
  */
 const ANALYZE = {
   provider: "wllama",
@@ -78,332 +89,269 @@ const ANALYZE = {
   apiUrl: ""
 };
 
+/*
+ * PROFILE_FIELDS — the guided opening step that personalizes the experience.
+ * `key` is the storage field; `options` power a <select>; a missing `options`
+ * means a free-text <input>. All are stored under coach-profile-v1.
+ */
+const PROFILE_FIELDS = [
+  { key: "businessName", label: "Business name", type: "text", required: true, placeholder: "e.g. Bluebird Bakery" },
+  { key: "industry", label: "Industry", type: "text", required: true, placeholder: "e.g. Food & beverage" },
+  {
+    key: "stage", label: "Business stage", type: "select", required: true,
+    options: ["Starting out", "Early days (1 year or less)", "Growing", "Established", "Scale-up"]
+  },
+  {
+    key: "employeeRange", label: "Employee count", type: "select", required: true,
+    options: ["Just me", "2-5", "6-20", "21-50", "51+"]
+  },
+  { key: "mainGoal", label: "Main goal right now", type: "text", required: false, placeholder: "e.g. Grow revenue by 20% this year" },
+  { key: "mainChallenge", label: "Main current challenge", type: "text", required: false, placeholder: "e.g. Limited time for bookkeeping" }
+];
+
+/*
+ * SCENARIOS — optional resilience prompts. Each renders its own small form in
+ * Phase 5 with the six fields below (opsAffected, workaround, responsible,
+ * customerComms, recoveryTarget, preventiveAction).
+ */
+const SCENARIOS = [
+  { id: "supplier-loss", label: "Loss of a key supplier", icon: "📦",
+    description: "What would you do if your main supplier could not deliver for 30 days?" },
+  { id: "closure", label: "Temporary business closure", icon: "🚪",
+    description: "How would you handle being unable to trade for a week or two (e.g. storm, fire, illness)?" },
+  { id: "data-loss", label: "Loss of business data", icon: "💾",
+    description: "Could you recover if your customer list, records, or files disappeared today?" },
+  { id: "cash-drop", label: "Sudden cash-flow reduction", icon: "💧",
+    description: "What would you do if income dropped sharply for a month?" },
+  { id: "key-person-loss", label: "Loss of a key employee", icon: "🧑‍💼",
+    description: "What would happen if your most important team member left with no notice?" },
+  { id: "cyber", label: "Cybersecurity incident", icon: "🔐",
+    description: "How would you respond to a hack, scam, or data breach affecting the business?" }
+];
+
+const SCENARIO_FIELDS = [
+  { key: "opsAffected", label: "Which operations would be affected?" },
+  { key: "workaround", label: "What workaround is available?" },
+  { key: "responsible", label: "Who would be responsible?" },
+  { key: "customerComms", label: "How will customers be informed?" },
+  { key: "recoveryTarget", label: "What recovery target is realistic?" },
+  { key: "preventiveAction", label: "What preventive action should we create?" }
+];
+
 const CATEGORIES = [
   {
-    id: "finance",
-    label: "Finance & Cash Flow",
-    icon: "💰",
+    id: "direction",
+    label: "Business Direction",
+    icon: "🧭",
+    help: "Clarity of purpose, goals, and planning rhythm.",
     questions: [
-      {
-        text: "We have positive cash flow most months.",
-        simple: "Most months, money coming in is more than money going out."
-      },
-      {
-        text: "We track financial statements (P&L, balance sheet, cash flow) regularly.",
-        simple: "We keep regular records of our income, spending, and what the business owns and owes."
-      },
-      {
-        text: "We have a clear pricing strategy tied to costs and margins.",
-        simple: "Our prices cover our costs and give us a reasonable profit on what we sell."
-      },
-      {
-        text: "We maintain a cash reserve for at least 3 months of expenses.",
-        simple: "We keep enough saved money to cover at least 3 months of bills if sales drop."
-      },
-      {
-        text: "We know our break-even point and monitor progress toward it.",
-        simple: "We know how much we must sell just to cover our costs, and we watch that number."
-      }
+      { text: "We have a clear picture of where the business is heading over the next 12 months.", simple: "We know the direction we want the business to go over the next year." },
+      { text: "Our goals are written down and easy for the team to understand.", simple: "Our goals are written somewhere we can all see and understand." },
+      { text: "We review our progress against those goals at least quarterly.", simple: "At least every few months, we check how we are doing against our goals." },
+      { text: "We have identified our top 2-3 competitors and what makes us different.", simple: "We know our main competitors and what makes us stand out from them." },
+      { text: "We know which opportunities are worth pursuing this year.", simple: "We have a short list of opportunities worth chasing this year." }
     ],
     recommendations: {
       weakness: {
-        text: "Set up monthly bookkeeping (even a simple spreadsheet or free tool like Wave) and calculate your break-even point. Build a 3-month cash reserve before reinvesting profits.",
-        simple: "Start recording your income and expenses every month (a simple spreadsheet is fine). Figure out how much you need to sell just to cover costs, and keep at least 3 months of bills saved before spending profits on new things."
+        text: "Start lean: write a one-page plan with up to three goals for the next 12 months and one simple metric per goal. Review it monthly for 15 minutes.",
+        simple: "Write one page: pick up to three goals for the next year and one simple number to watch for each. Spend 15 minutes a month checking them."
       },
       opportunity: {
-        text: "Introduce a rolling 13-week cash flow forecast and review pricing/margins quarterly to catch issues early.",
-        simple: "Look ahead about 3 months at the money coming in and going out each week. Every few months, check that your prices still cover your costs and give you a profit."
+        text: "Build a quarterly review habit: a 60-minute session to check metrics, celebrate progress, and reset priorities.",
+        simple: "Set aside an hour every few months to look at your numbers, celebrate what is working, and adjust your next steps."
       },
       strength: {
-        text: "Consider using strong financial discipline to negotiate better supplier terms, pursue growth financing, or invest in automation.",
-        simple: "Your money habits are in good shape — use that to get better deals from suppliers, get funding to grow, or invest in tools that save you time."
+        text: "Leverage your planning discipline to test one new opportunity with a small pilot before committing more resources.",
+        simple: "Use your strong planning habit to try one new opportunity on a small scale before going all in."
       }
     }
   },
   {
-    id: "marketing",
-    label: "Marketing & Sales",
-    icon: "📣",
+    id: "market",
+    label: "Customers & Market",
+    icon: "👥",
+    help: "Understanding, reaching, and keeping the right customers.",
     questions: [
-      {
-        text: "We have a clearly defined target customer/persona.",
-        simple: "We know exactly who our ideal customer is."
-      },
-      {
-        text: "We use at least one consistent, measured marketing channel.",
-        simple: "We advertise or promote ourselves in at least one regular place, and we can see if it's working."
-      },
-      {
-        text: "We track conversion rate from lead to paying customer.",
-        simple: "We track how many people who show interest actually buy from us."
-      },
-      {
-        text: "We have a repeatable sales process (not just ad-hoc selling).",
-        simple: "We sell the same way every time, step by step — not off the top of our head."
-      },
-      {
-        text: "We ask customers how they found us and act on that data.",
-        simple: "We ask customers how they heard about us and we use that information."
-      }
+      { text: "We know exactly who our ideal customer is.", simple: "We know exactly who our ideal customer is." },
+      { text: "We consistently use at least one channel to reach them and can see what it produces.", simple: "We reach customers through at least one regular channel and can tell if it is working." },
+      { text: "We track how many interested people become paying customers.", simple: "We know how many people who show interest actually buy." },
+      { text: "We ask customers how they found us and act on that information.", simple: "We ask customers how they heard about us and use the answer." },
+      { text: "We regularly collect feedback and use it to improve.", simple: "We regularly ask customers what they think and use it to improve." }
     ],
     recommendations: {
       weakness: {
-        text: "Define one clear customer persona and pick a single low-cost channel (e.g., local SEO, referrals, or one social platform) to test consistently for 90 days before adding more channels.",
-        simple: "Pick one type of customer to focus on, and choose one cheap way to reach them (word of mouth, one social media platform, or getting found on Google). Stick with it for 90 days before trying anything else."
+        text: "Define one clear customer 'person' and pick a single low-cost channel to test consistently for 90 days before adding more.",
+        simple: "Pick one type of customer to focus on and one affordable way to reach them. Stick with it for 90 days before trying anything else."
       },
       opportunity: {
-        text: "Document your sales process into simple stages (lead → qualify → propose → close) and start tracking conversion rate per stage to find the biggest drop-off.",
-        simple: "Write down the steps of a sale (interested person → talk to them → give a quote → close the deal). Track where you're losing the most people so you can fix that step."
+        text: "Trace the path from an interested person to a paying customer and find where people drop off, then fix that one step.",
+        simple: "Follow the steps someone takes from interested to paying, find where people drop out, and make that one step easier."
       },
       strength: {
-        text: "Explore scaling what already works: paid promotion of your best organic channel, referral incentives, or a CRM to manage volume.",
-        simple: "What's working is working — put a little money behind your best advertising, reward people who send you new customers, or use a simple tool to keep track of your sales contacts."
+        text: "Scale what already works: promote your best channel, add a simple referral ask, or reward repeat customers.",
+        simple: "Put a little extra behind what is already working — promote it, ask happy customers to refer you, or reward those who come back."
+      }
+    }
+  },
+  {
+    id: "financial",
+    label: "Financial Health",
+    icon: "💰",
+    help: "Cash flow, records, pricing, and the reserve that keeps you safe.",
+    questions: [
+      { text: "Most months, more money comes in than goes out.", simple: "Most months, income is higher than spending." },
+      { text: "We keep up-to-date records of income and expenses.", simple: "We keep current records of what we earn and spend." },
+      { text: "Our prices cover our costs and leave room for profit.", simple: "Our prices pay for our costs and still leave a profit." },
+      { text: "We have a cash reserve for at least three months of expenses.", simple: "We keep enough saved to cover about three months of bills if sales dip." },
+      { text: "We know how much we need to sell to break even.", simple: "We know the amount we must sell just to cover costs." }
+    ],
+    recommendations: {
+      weakness: {
+        text: "Begin with simple monthly bookkeeping (a spreadsheet is fine) and build a three-month cash reserve before reinvesting profits.",
+        simple: "Start with easy monthly records of money in and out. Build up three months of savings before spending profits on new things."
+      },
+      opportunity: {
+        text: "Add a rolling 13-week cash flow view and review your pricing and margins quarterly.",
+        simple: "Look about three months ahead at money coming in and out each week, and check prices cover costs every few months."
+      },
+      strength: {
+        text: "Use solid finances as leverage: negotiate better supplier terms, explore growth funding, or invest in tools that save time.",
+        simple: "With healthy finances, you can negotiate better deals, look at funding for growth, or invest in time-saving tools."
       }
     }
   },
   {
     id: "operations",
-    label: "Operations & Processes",
+    label: "Operations",
     icon: "⚙️",
+    help: "The processes, tools, and people-power behind delivering work.",
     questions: [
-      {
-        text: "Core processes (fulfillment, service delivery, etc.) are documented.",
-        simple: "The important ways we do our work (delivering orders, serving customers, etc.) are written down."
-      },
-      {
-        text: "Work doesn't grind to a halt when one key person is unavailable.",
-        simple: "Work keeps moving even if one important person is out sick or away."
-      },
-      {
-        text: "We use some form of task/project tracking (not just memory or texts).",
-        simple: "We keep track of our tasks and projects somewhere organized — not just in our heads or text messages."
-      },
-      {
-        text: "We regularly look for bottlenecks and remove them.",
-        simple: "We regularly find what slows our work down and fix it."
-      },
-      {
-        text: "Quality issues or customer complaints are logged and reviewed.",
-        simple: "When customers have a problem or complain, we write it down and look at it again."
-      }
+      { text: "Our core ways of working are documented and repeatable.", simple: "Our most important jobs are written down so anyone can follow them." },
+      { text: "Work keeps moving when one key person is unavailable.", simple: "Work continues even when one important person is out." },
+      { text: "We track tasks and projects in an organized way.", simple: "We keep track of tasks in one organized place, not just in our heads." },
+      { text: "We regularly find and clear the bottlenecks that slow us down.", simple: "We regularly find what slows us down and fix it." },
+      { text: "Quality issues and customer complaints are logged and reviewed.", simple: "We write down problems or complaints and look at them again." }
     ],
     recommendations: {
       weakness: {
-        text: "Write down your top 3 recurring processes as simple checklists (even in a shared doc). This is the fastest way to reduce key-person dependency.",
-        simple: "Write down your 3 most common jobs as simple checklists (even in a shared document). That way anyone on the team can do them, not just one person."
+        text: "Write your top three recurring jobs as simple checklists in a shared place — the fastest way to reduce dependence on one person.",
+        simple: "Turn your three most common jobs into simple checklists everyone can access, so no one person is essential for them."
       },
       opportunity: {
-        text: "Adopt a lightweight project/task tool (Trello, Asana, or even a shared spreadsheet) and hold a brief weekly review of bottlenecks.",
-        simple: "Start using a simple task list (like Trello, Asana, or a shared spreadsheet) and take 15 minutes a week to check what's slowing things down."
+        text: "Adopt a lightweight task tool and hold a short weekly review of what is blocking progress.",
+        simple: "Use a simple task app or shared list, and spend a few minutes each week clearing what is blocking progress."
       },
       strength: {
-        text: "Look into light automation (e.g., Zapier/Power Automate) for your most repetitive documented process to free up staff time.",
-        simple: "Look for a way to automate your most repetitive job (tools like Zapier or Power Automate) so your team can spend time on bigger things."
+        text: "Automate one repetitive process to free up time, then measure the time it returns to you.",
+        simple: "Find one repeatable job a tool can automate, and track how much time it gives back."
       }
     }
   },
   {
-    id: "hr",
-    label: "People & Team",
-    icon: "🧑‍🤝‍🧑",
+    id: "people",
+    label: "People & Leadership",
+    icon: "🤝",
+    help: "Roles, feedback, and keeping the right people in the right places.",
     questions: [
-      {
-        text: "Roles and responsibilities are clear for each team member.",
-        simple: "Everyone on the team knows what their job is."
-      },
-      {
-        text: "We have a simple process for hiring and onboarding new people.",
-        simple: "We have a simple, set way to hire and train new people."
-      },
-      {
-        text: "We give and receive feedback on performance regularly.",
-        simple: "We regularly tell each other how the work is going — both what's good and what could be better."
-      },
-      {
-        text: "Team members understand the business's goals, not just their tasks.",
-        simple: "Our team knows where the business is headed, not just their own daily tasks."
-      },
-      {
-        text: "We have a plan for what happens if a key employee leaves.",
-        simple: "We know what we'd do if an important team member left."
-      }
+      { text: "Everyone in the business knows what their role and responsibilities are.", simple: "Each person knows exactly what their job involves." },
+      { text: "We have a simple, consistent way to hire and welcome new people.", simple: "We have a repeatable process for hiring and training new people." },
+      { text: "We give and receive feedback regularly in both directions.", simple: "We regularly share helpful feedback — up, down, and sideways." },
+      { text: "The team understands the business goals, not just their daily tasks.", simple: "The team sees where the business is headed, not just their own tasks." },
+      { text: "We have an idea of how we would cope if a key person left.", simple: "We have a rough plan for carrying on if a key person left." }
     ],
     recommendations: {
       weakness: {
-        text: "Create one-page role descriptions for each position and schedule a recurring (even monthly) 1-on-1 check-in with each team member.",
-        simple: "Write one page for each job explaining what it involves. Set up a short monthly one-on-one chat with each team member."
+        text: "Create one-page role descriptions and schedule a regular one-on-one check-in with each team member.",
+        simple: "Write a short description of each role and set up a regular one-on-one chat with each person."
       },
       opportunity: {
-        text: "Introduce a simple quarterly goal-sharing session so the team connects daily tasks to business priorities.",
-        simple: "Once every few months, bring the team together for a short talk about the business goals so everyone sees how their daily work connects to them."
+        text: "Hold a short quarterly session where the team connects daily work to the bigger goals.",
+        simple: "Every few months, spend a short session helping the team see how their work supports the goals."
       },
       strength: {
-        text: "Invest in a light succession/cross-training plan so growth isn't bottlenecked by any single person, including you.",
-        simple: "Teach more than one person each key job so the business can't stall if one person (including you) is away. Then you're free to grow."
+        text: "Deepen your bench strength with simple cross-training so growth never depends on any single person — including you.",
+        simple: "Teach a second person each key job, so the business can keep moving no matter who is away."
       }
     }
   },
   {
     id: "technology",
-    label: "Technology & Innovation",
+    label: "Technology & Security",
     icon: "💻",
+    help: "Tools that save time and the safeguards that protect your data.",
     questions: [
-      {
-        text: "We use digital tools to reduce manual/repetitive work.",
-        simple: "We use computers and apps to cut down on boring, repetitive work."
-      },
-      {
-        text: "Our customer/business data is backed up and reasonably secure.",
-        simple: "Our important files and customer info are safely saved and protected."
-      },
-      {
-        text: "We regularly evaluate new tools or methods relevant to our industry.",
-        simple: "We regularly check out new tools or ways of working that could help our type of business."
-      },
-      {
-        text: "We have a usable website or digital presence customers can find.",
-        simple: "Customers can find us online (website, social media, or a good Google listing)."
-      },
-      {
-        text: "We could recover quickly if a laptop, phone, or system failed today.",
-        simple: "If our computer, phone, or system broke today, we could get back to work quickly."
-      }
+      { text: "We use digital tools that reduce manual or repetitive work.", simple: "We use apps and tools to reduce boring, repetitive work." },
+      { text: "Our important data is backed up and reasonably protected.", simple: "Our important files and customer details are safely backed up and protected." },
+      { text: "We regularly look at tools or methods that could help our industry.", simple: "We regularly check out tools or methods that could help our type of business." },
+      { text: "Customers can find us online through a website or a good listing.", simple: "Customers can find us online — a website, social media, or a good directory listing." },
+      { text: "We could get back to work quickly if a device or system failed today.", simple: "If a computer or system failed today, we could recover and keep working quickly." }
     ],
     recommendations: {
       weakness: {
-        text: "Start with the basics: enable automatic backups for critical files (cloud drive is fine) and set up a free/low-cost website or listing (e.g., Google Business Profile).",
-        simple: "Start simple: turn on automatic backup for important files (a cloud drive is fine) and set up a free online listing (like a Google Business Profile) so customers can find you."
+        text: "Start with the essentials: enable automatic backups to a cloud drive and set up a simple online presence or Google Business Profile.",
+        simple: "Turn on automatic backups for important files and create a simple online listing so customers can find you."
       },
       opportunity: {
-        text: "Pilot one tool that removes a manual task (invoicing, scheduling, inventory) and measure the time saved before rolling out more.",
-        simple: "Try one app that does a boring job for you (like sending bills, booking appointments, or tracking stock). See how much time it saves before adding more."
+        text: "Pilot one tool that removes a manual task and measure the time it saves before expanding.",
+        simple: "Try one app that handles a boring job for you, and see how much time it saves before adding more."
       },
       strength: {
-        text: "Explore data-driven decision-making: light analytics dashboards or AI-assisted tools (like this one!) to keep improving.",
-        simple: "Use the numbers and easy-to-read dashboards (or helpful AI tools, like this one) to keep making things better."
+        text: "Use good systems to make data-driven decisions: simple dashboards or AI-assisted tools to keep improving.",
+        simple: "Use your reliable systems and simple dashboards to keep making things better with data."
       }
     }
   },
   {
-    id: "customer",
-    label: "Customer Experience",
-    icon: "⭐",
+    id: "risk",
+    label: "Risk & Business Continuity",
+    icon: "🛡️",
+    help: "Your ability to keep operating when something unexpected happens.",
     questions: [
-      {
-        text: "We actively collect customer feedback (surveys, reviews, conversations).",
-        simple: "We regularly ask customers what they think (through surveys, reviews, or just asking)."
-      },
-      {
-        text: "We have a defined way to handle complaints or service failures.",
-        simple: "We have a set way to handle customer complaints or when something goes wrong."
-      },
-      {
-        text: "We know our customer retention/repeat-purchase rate.",
-        simple: "We know how many of our customers come back and buy again."
-      },
-      {
-        text: "Customers can reach us easily through their preferred channel.",
-        simple: "Customers can easily get in touch with us the way they prefer."
-      },
-      {
-        text: "We use feedback to actually change something in the business.",
-        simple: "When customers tell us something, we actually use it to make changes."
-      }
+      { text: "The business could keep operating if a key supplier or partner failed.", simple: "We could keep working if a major supplier or partner let us down." },
+      { text: "We have thought through what we would do if we had to close for a short time.", simple: "We have a rough plan for handling a short closure." },
+      { text: "Critical customer information and records would survive a data loss event.", simple: "Our key records and customer details would survive losing our files." },
+      { text: "We could absorb a sudden drop in income for a month or two.", simple: "We could manage if income suddenly dropped for a month or two." },
+      { text: "We have identified the risks most likely to affect us and made plans for them.", simple: "We have named our biggest risks and planned for them." }
     ],
     recommendations: {
       weakness: {
-        text: "Add one lightweight feedback loop this month: a 2-question survey after purchase, or simply asking your next 10 customers directly.",
-        simple: "This month, get feedback one easy way — a quick 2-question survey after someone buys, or just ask your next 10 customers in person."
+        text: "Write a 'keep going' plan in half a page: what could stop you, and the first step you would take for each.",
+        simple: "Write a short plan: what could stop the business, and your first move for each one."
       },
       opportunity: {
-        text: "Start tracking a basic repeat-customer rate and set a simple complaint-handling script so responses are consistent.",
-        simple: "Start keeping track of how many customers come back to buy again, and write down a simple, friendly way to respond to complaints so every customer gets the same good treatment."
+        text: "Test one of your 'what if' plans this quarter — for example, a backup recovery drill or a week of documented checklists.",
+        simple: "This quarter, actually practise one of your 'what if' plans, like recovering from a backup or completing checklists."
       },
       strength: {
-        text: "Turn happy customers into growth: build a referral or review-generation habit into your service delivery.",
-        simple: "Use your happy customers to grow: get into the habit of asking satisfied customers for reviews or to send friends your way."
+        text: "Turn your continuity strength into a promise you share: document your approach and offer it as a trust signal to customers and partners.",
+        simple: "You are well prepared — write down how you stay resilient and share it with customers and partners as trust."
       }
     }
   },
   {
-    id: "strategy",
-    label: "Strategy & Planning",
-    icon: "🧭",
+    id: "innovation",
+    label: "Innovation & Growth",
+    icon: "🚀",
+    help: "Fresh ideas, improvements, and a path to responsible growth.",
     questions: [
-      {
-        text: "We have a written (even if simple) business plan or goals for the year.",
-        simple: "We have our goals for the year written down, even if it's just simple."
-      },
-      {
-        text: "We track a small number of key metrics tied to those goals.",
-        simple: "We measure a few simple numbers that tell us whether we're reaching our goals."
-      },
-      {
-        text: "We review progress against goals at least quarterly.",
-        simple: "At least every few months, we check how we're doing against our goals."
-      },
-      {
-        text: "We understand our top 2-3 competitors and how we differ.",
-        simple: "We know our main competitors and what makes us different from them."
-      },
-      {
-        text: "We have identified at least one new opportunity worth exploring.",
-        simple: "We've found at least one new chance to grow worth looking into."
-      }
+      { text: "We regularly try small improvements to how we do things.", simple: "We regularly try small improvements to the way we work." },
+      { text: "We have at least one new idea or offering we are exploring.", simple: "We are exploring at least one new idea, product, or service." },
+      { text: "We learn from what does and does not work without blaming anyone.", simple: "We learn from successes and setbacks, and nobody gets blamed." },
+      { text: "We have room in the plan for a controlled amount of growth.", simple: "Our plan has room for growth we can handle." },
+      { text: "We keep an eye on trends in our industry and adapt when they matter.", simple: "We watch what is changing in our industry and adapt when it matters." }
     ],
     recommendations: {
       weakness: {
-        text: "Write a one-page plan: 3 goals for the next 12 months, and 1 metric per goal to track monthly.",
-        simple: "Write a one-page plan: pick 3 goals for the next year, and one simple number to watch for each goal each month."
+        text: "Make room for one small experiment this month — a product tweak, a new offer, or a better way to do one task — and capture one learning.",
+        simple: "Try one small experiment this month, whatever it is, and write down one thing you learned from it."
       },
       opportunity: {
-        text: "Schedule a recurring quarterly review (even 60 minutes) to check metrics against goals and adjust.",
-        simple: "Set aside an hour every few months to check your numbers against your goals and adjust as needed."
+        text: "Create a simple 'ideas list' and review it monthly, choosing one idea to test every quarter.",
+        simple: "Keep a simple list of ideas, look at it monthly, and pick one to try every few months."
       },
       strength: {
-        text: "Use your planning discipline to formally evaluate the new opportunity you've identified — a small pilot or test is a strong next step.",
-        simple: "You plan well — use that to test the new opportunity you found. A small trial is the smartest next step."
-      }
-    }
-  },
-  {
-    id: "legal",
-    label: "Legal & Compliance",
-    icon: "⚖️",
-    questions: [
-      {
-        text: "We maintain the required licenses, permits, and registrations for our business.",
-        simple: "We keep all the licenses, permits, and registrations our business legally needs."
-      },
-      {
-        text: "Our contracts, terms, and agreements are reviewed for legal soundness.",
-        simple: "The contracts and agreements we sign are checked so they are fair and legal."
-      },
-      {
-        text: "We comply with the data protection and privacy rules that apply to us.",
-        simple: "We keep customer and employee information private and follow the rules for handling it."
-      },
-      {
-        text: "Our tax filings and required regulatory reports are kept up to date.",
-        simple: "We file our taxes and required business reports on time."
-      },
-      {
-        text: "We follow employment and workplace-safety rules for our team.",
-        simple: "We follow the rules about hiring, pay, and keeping the workplace safe."
-      }
-    ],
-    recommendations: {
-      weakness: {
-        text: "Run a basic legal-and-licensing checklist: confirm every required license/registration, set reminders for renewal dates, and have contracts reviewed by a small-business legal resource. Keep one folder with each registration and its due date.",
-        simple: "Make a simple list of every license, permit, and registration your business needs, with its renewal date. Before signing important contracts, have a small-business lawyer (or a reputable online service) take a quick look. Keep all the paperwork in one folder."
-      },
-      opportunity: {
-        text: "Introduce an annual compliance review (licenses, taxes, privacy, contracts) and use a consistent simple contract template so repeat agreements are safe and consistent.",
-        simple: "Once a year, do a quick check that your licenses, taxes, and privacy paperwork are all up to date. Use a standard, simple contract for repeat agreements so nobody has to reinvent one each time."
-      },
-      strength: {
-        text: "Turn your strong compliance footing into a trust advantage: formalize a compliance calendar, document your privacy approach, and highlight these as trust signals with customers and partners.",
-        simple: "You are on top of the legal basics — put your compliance tasks on a simple calendar, write down how you protect customer information, and tell customers and partners about it as a sign of trust."
+        text: "Channel your innovation culture into structured growth: pick your best idea and build a small pilot with clear success measures.",
+        simple: "You are great at fresh ideas — choose your best one and turn it into a small pilot with clear measures of success."
       }
     }
   }

@@ -4,12 +4,20 @@
  * submit.test.js
  * Plain-Node unit tests for the /api/submit request path. No packages needed:
  * run `npm test` (or `node test/submit.test.js`) from the api/ folder.
+ *
+ * Security contract under test:
+ *   - anonymous -> 401
+ *   - authenticated but no submit role -> 403
+ *   - authenticated with a submit role -> 202 (with valid body)
+ *   - CSRF envelope rejects cross-site state-changing requests
+ *   - rate limiter trips at the configured ceiling
  */
 
 const assert = require('assert');
 const { validateSubmit, MAX_BODY_BYTES } = require('../src/validate');
 const { handleSubmit } = require('../src/handler');
-const { createStore } = require('../src/store');
+const { createStore, createDataStore, createMemoryStore } = require('../src/store');
+const auth = require('../src/auth');
 
 let passed = 0;
 let failed = 0;
@@ -25,7 +33,7 @@ function test(name, fn) {
     });
 }
 
-const CATEGORY_IDS = ['finance', 'marketing', 'operations', 'hr', 'technology', 'customer', 'strategy', 'legal'];
+const CATEGORY_IDS = ['direction', 'market', 'financial', 'operations', 'people', 'technology', 'risk', 'innovation'];
 
 function validPayload(overrides) {
   const payload = {
@@ -47,14 +55,22 @@ function fakeStore(result, throwIt) {
   };
 }
 
+function actor(role, userId) {
+  return {
+    userId: userId || 'user-123',
+    userRoles: role ? [role] : [],
+  };
+}
+
 function call(bodyText, opts) {
   return handleSubmit(Object.assign(
     {
       bodyText,
-      principal: null,
+      principal: actor('Evaluator'),
       store: fakeStore({ stored: true }),
       env: {},
       log: { error: () => {}, info: () => {} },
+      requestMeta: { method: 'POST', secFetchSite: 'same-origin', origin: '', ip: '1.2.3.4' },
     },
     opts
   ));
@@ -98,7 +114,7 @@ function call(bodyText, opts) {
 
   await test('validate: rejects duplicate ids', () => {
     const p = validPayload();
-    p.categories[1].id = 'finance';
+    p.categories[1].id = CATEGORY_IDS[0];
     assert.strictEqual(validateSubmit(p).ok, false);
   });
 
@@ -124,6 +140,44 @@ function call(bodyText, opts) {
     assert.strictEqual(validateSubmit(p).ok, false);
   });
 
+  await test('handler: anonymous -> 401', async () => {
+    const r = await call(JSON.stringify(validPayload()), { principal: null });
+    assert.strictEqual(r.status, 401);
+    assert.strictEqual(r.body.error, 'unauthenticated');
+  });
+
+  await test('handler: authenticated without a submit role -> 403', async () => {
+    const r = await call(JSON.stringify(validPayload()), { principal: actor('Reader') });
+    assert.strictEqual(r.status, 403);
+    assert.strictEqual(r.body.detail, 'missing_required_role');
+  });
+
+  await test('handler: cross-site POST without allowlisted origin -> 403', async () => {
+    const r = await call(JSON.stringify(validPayload()), {
+      requestMeta: { method: 'POST', secFetchSite: 'cross-site', origin: 'https://evil.test', ip: '1.1.1.1' },
+      env: { ALLOWED_ORIGINS: 'https://app.example.test' },
+    });
+    assert.strictEqual(r.status, 403);
+    assert.strictEqual(r.body.detail, 'cross_site_request_rejected');
+  });
+
+  await test('handler: allowlisted cross-origin POST -> 202', async () => {
+    const r = await call(JSON.stringify(validPayload()), {
+      requestMeta: { method: 'POST', secFetchSite: 'cross-site', origin: 'https://app.example.test', ip: '1.1.1.1' },
+      env: { ALLOWED_ORIGINS: 'https://app.example.test' },
+    });
+    assert.strictEqual(r.status, 202);
+  });
+
+  await test('handler: over the rate limit -> 429', async () => {
+    const limiter = auth.createRateLimiter({ max: 1, windowMs: 60000 });
+    await call(JSON.stringify(validPayload()), { limiter });
+    const r = await call(JSON.stringify(validPayload()), { limiter });
+    assert.strictEqual(r.status, 429);
+    assert.strictEqual(r.body.error, 'too_many_requests');
+    assert.ok(Number(r.headers['Retry-After']) > 0);
+  });
+
   await test('handler: 202 Accepted with id + stored flag', async () => {
     const r = await call(JSON.stringify(validPayload()));
     assert.strictEqual(r.status, 202);
@@ -131,25 +185,22 @@ function call(bodyText, opts) {
     assert.strictEqual(r.body.stored, true);
   });
 
-  await test('handler: stamps submissionId, submittedAt, no principal', async () => {
+  await test('handler: stamps submissionId, submittedAt, principal userId', async () => {
     let captured;
     const store = async (s) => { captured = s; return { stored: true }; };
-    const r = await call(JSON.stringify(validPayload()), { store });
+    const r = await call(JSON.stringify(validPayload()), { store, principal: actor('Evaluator', 'user-abc') });
     assert.strictEqual(r.status, 202);
     assert.ok(captured.submissionId);
     assert.ok(captured.submittedAt);
-    assert.strictEqual(captured.principal, null);
+    assert.strictEqual(captured.principal, 'user-abc');
     assert.strictEqual(captured.schemaVersion, 1);
   });
 
-  await test('handler: records principal when provided', async () => {
-    let captured;
-    const store = async (s) => { captured = s; return { stored: true }; };
-    await call(JSON.stringify(validPayload()), {
-      store,
-      principal: { userId: 'user-123', userRoles: ['submitters'] },
-    });
-    assert.strictEqual(captured.principal, 'user-123');
+  await test('handler: audit emits accepted on success', async () => {
+    const events = [];
+    const audit = auth.createAuditor({ persist: (e) => events.push(e) });
+    await call(JSON.stringify(validPayload()), { audit, principal: actor('Evaluator', 'user-aud') });
+    assert.ok(events.some((e) => e.event === 'submit.accepted' && e.userId === 'user-aud'));
   });
 
   await test('handler: empty body -> 400', async () => {
@@ -166,22 +217,6 @@ function call(bodyText, opts) {
     const big = JSON.stringify(validPayload({ categories: [] })) + 'x'.repeat(MAX_BODY_BYTES);
     const r = await call(big);
     assert.strictEqual(r.status, 413);
-  });
-
-  await test('handler: REQUIRE_AUTH denies missing role', async () => {
-    const r = await call(JSON.stringify(validPayload()), {
-      principal: { userId: 'u', userRoles: ['reader'] },
-      env: { REQUIRE_AUTH: 'true', SUBMITTER_ROLE: 'submitters' },
-    });
-    assert.strictEqual(r.status, 403);
-  });
-
-  await test('handler: REQUIRE_AUTH allows submitters role', async () => {
-    const r = await call(JSON.stringify(validPayload()), {
-      principal: { userId: 'u-1', userRoles: ['submitters'] },
-      env: { REQUIRE_AUTH: 'true', SUBMITTER_ROLE: 'submitters' },
-    });
-    assert.strictEqual(r.status, 202);
   });
 
   await test('handler: store failure -> 500', async () => {
@@ -206,7 +241,29 @@ function call(bodyText, opts) {
 
   await test('store: unconfigured (prod) throws', async () => {
     const store = createStore({ COSMOS_CONNECTION_STRING: '', COSMOS_ENDPOINT: '', COSMOS_KEY: '' });
-    assert.rejects(() => store({}), /Storage is not configured/);
+    await assert.rejects(() => store({}), /Storage is not configured/);
+  });
+
+  await test('data store: memory store persists profiles and imports', async () => {
+    const s = createMemoryStore();
+    await s.saveProfile('u9', { id: 'u9', userId: 'u9', displayName: 'Pat' });
+    const got = await s.getProfile('u9');
+    assert.strictEqual(got.displayName, 'Pat');
+    const rec = await s.saveGuestImport('u9', { kind: 'guest-import', itemCount: 5, importedAt: 'x' });
+    assert.strictEqual(rec.kind, 'guest-import');
+    const after = await s.getProfile('u9');
+    assert.strictEqual(after.imports.length, 1);
+  });
+
+  await test('data store: createDataStore throws when unconfigured in prod mode', async () => {
+    const env = { COSMOS_CONNECTION_STRING: '', COSMOS_ENDPOINT: '', COSMOS_KEY: '' };
+    assert.throws(() => createDataStore(env), /Storage is not configured/);
+  });
+
+  await test('data store: createDataStore returns memory store in dev', async () => {
+    const s = createDataStore({ DEV_NO_STORE: 'true' });
+    assert.strictEqual(typeof s.saveProfile, 'function');
+    assert.strictEqual(typeof s.saveAuditEvent, 'function');
   });
 
   console.log(`\n${passed} passed, ${failed} failed`);

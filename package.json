@@ -6,7 +6,9 @@
   "scripts": {
     "start": "npx --yes serve .",
     "local": "node serve.js",
-    "test": "node test/analyzer.test.js && node test/app.smoke.test.js",
+    "mock:auth": "node scripts/mock-swauth.js",
+    "auth:github": "node scripts/github-swauth.js",
+    "test": "node test/analyzer.test.js && node test/scoring.test.js && node test/app.smoke.test.js && node test/managed.test.js && node test/localauth.test.js && node test/serve.test.js",
     "app:sync": "node scripts/sync-app.mjs",
     "app:dev": "tauri dev",
     "app:build": "tauri build",

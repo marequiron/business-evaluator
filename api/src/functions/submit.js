@@ -3,25 +3,36 @@
 /**
  * Azure Functions HTTP trigger: POST /api/submit
  * Thin adapter around the framework-agnostic handleSubmit(). Reads the SWA
- * provided identity header, delegates, and maps the result to an HTTP
- * response. All validation/storage lives in src/handler.js + src/store.js.
+ * client principal header (auth.js), delegates, and maps the result to an
+ * HTTP response. Path + role checks are explicit — the SWA front gate may
+ * carry routes/roles, but the backend enforces them regardless.
  */
 
 const { app } = require('@azure/functions');
 const { handleSubmit } = require('../handler');
-const { createStore } = require('../store');
+const { createDataStore } = require('../store');
+const auth = require('../auth');
+const { requestMeta } = require('../http-utils');
+
+const limiter = auth.limiterFor(process.env, { max: 20, windowMs: 60000 });
 
 app.http('submit', {
   methods: ['POST'],
   authLevel: 'anonymous', // SWA layer handles access; we enforce roles in handler
   route: 'submit',
   handler: async (request, context) => {
-    const store = createStore();
-    const principal = parsePrincipal(request);
+    const store = createDataStore();
+    const principal = auth.parsePrincipal(request.headers.get('x-ms-client-principal'));
     const logger = {
       error: (m) => context.log.error(m),
       info: (m) => context.log.info(m),
     };
+    const audit = auth.createAuditor({
+      logger,
+      persist: store && typeof store.saveAuditEvent === 'function'
+        ? (entry) => store.saveAuditEvent(entry)
+        : null,
+    });
 
     try {
       const result = await handleSubmit({
@@ -30,6 +41,9 @@ app.http('submit', {
         store,
         env: process.env,
         log: logger,
+        audit,
+        limiter,
+        requestMeta: requestMeta(request),
       });
       return {
         status: result.status,
@@ -45,25 +59,3 @@ app.http('submit', {
     }
   },
 });
-
-/**
- * Azure Static Web Apps injects the authenticated user as the base64-encoded
- * x-ms-client-principal header. If the SWA header is URL-safe base64, swap
- * the characters back before decoding.
- */
-function parsePrincipal(request) {
-  const raw = request.headers.get('x-ms-client-principal');
-  if (!raw) return null;
-  try {
-    const normalized = raw.replace(/-/g, '+').replace(/_/g, '/');
-    const decoded = JSON.parse(Buffer.from(normalized, 'base64').toString('utf8'));
-    return {
-      identityProvider: decoded.identityProvider || null,
-      userId: decoded.userId || decoded.userDetails || null,
-      userDetails: decoded.userDetails || null,
-      userRoles: Array.isArray(decoded.userRoles) ? decoded.userRoles : [],
-    };
-  } catch (e) {
-    return null;
-  }
-}

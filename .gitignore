@@ -1,5 +1,7 @@
 ﻿node_modules/
 .opencode/local/
 *.log
+scripts/.github-oauth.json
+scripts/github-roles.local.json
 src-tauri/target/
 src-tauri/app-dist/

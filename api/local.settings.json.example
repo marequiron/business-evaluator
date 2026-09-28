@@ -8,8 +8,12 @@
     "COSMOS_KEY": "",
     "COSMOS_DATABASE": "business-evaluator",
     "COSMOS_CONTAINER": "submissions",
-    "REQUIRE_AUTH": "false",
-    "SUBMITTER_ROLE": "submitters",
-    "DEV_NO_STORE": "true"
+    "COSMOS_USERS_CONTAINER": "users",
+    "COSMOS_AUDIT_CONTAINER": "audit",
+    "DEV_NO_STORE": "true",
+    "ALLOWED_ORIGINS": "",
+    "RATE_LIMIT_MAX": "20",
+    "RATE_LIMIT_WINDOW_MS": "60000",
+    "ALLOW_IMPORTS": "false"
   }
 }

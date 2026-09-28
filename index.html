@@ -3,28 +3,132 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Business Self-Evaluation Tool</title>
+  <title>Business Growth &amp; Resilience Coach</title>
   <link rel="stylesheet" href="css/style.css" />
+  <meta name="description" content="A private, browser-only coach for business owners: profile, assessment, dashboard, action plan, resilience scenarios, and progress tracking." />
 </head>
 <body>
-  <header>
-    <h1>Business Self-Evaluation Tool</h1>
-    <p>Answer 1-5 rating questions across 8 categories to reveal your business's
-      strengths, weaknesses, and opportunities — with tailored recommendations.</p>
-    <p class="overlay-hint">Tap the ⓘ next to a question or recommendation for a
-      plain-language explanation.</p>
+  <header class="app-header">
+    <p class="app-header-kicker">Business Growth &amp; Resilience Coach</p>
+    <h1 id="greeting">Welcome</h1>
+    <p id="greeting-sub" class="app-header-sub">Your privacy is built in — everything below runs in your browser and stays on this device.</p>
   </header>
 
-  <main>
-    <details id="analyze" class="analyze">
-      <summary>🧠 Analyze a document (optional, on-device AI)</summary>
+  <nav id="coach-nav" class="coach-nav" aria-label="Coach sections">
+    <button type="button" class="nav-tab" data-tab="profile" aria-controls="panel-profile">About your business</button>
+    <button type="button" class="nav-tab" data-tab="assessment" aria-controls="panel-assessment">Assessment</button>
+    <button type="button" class="nav-tab" data-tab="dashboard" aria-controls="panel-dashboard">Dashboard</button>
+    <button type="button" class="nav-tab" data-tab="action-plan" aria-controls="panel-action-plan">Action plan</button>
+    <button type="button" class="nav-tab" data-tab="roadmap" aria-controls="panel-roadmap">Resilience roadmap</button>
+    <button type="button" class="nav-tab" data-tab="scenarios" aria-controls="panel-scenarios">Scenarios</button>
+    <button type="button" class="nav-tab" data-tab="progress" aria-controls="panel-progress">Progress</button>
+  </nav>
+
+  <main id="main">
+    <section id="panel-profile" class="panel" data-panel="profile" aria-labelledby="profile-title">
+      <div class="card">
+        <h2 id="profile-title">A few details about your business</h2>
+        <p class="muted">
+          These personalize your plan. They are stored only in your browser and can be edited anytime.
+        </p>
+        <form id="profile-form" autocomplete="off" novalidate></form>
+        <p id="profile-save-note" class="profile-save-note" hidden></p>
+      </div>
+    </section>
+
+    <section id="panel-assessment" class="panel" data-panel="assessment" aria-labelledby="assessment-title" hidden>
+      <div class="card">
+        <div class="assess-head">
+          <div>
+            <h2 id="assessment-title">Your assessment</h2>
+            <p id="assess-context" class="muted"></p>
+          </div>
+          <span id="assess-greeting" class="assess-greeting" aria-live="polite"></span>
+        </div>
+
+        <div id="assess-progress-wrap" class="assess-progress-wrap" hidden>
+          <div class="assess-progress-label">
+            <span id="assess-progress-text"></span>
+            <span id="assess-progress-pct"></span>
+          </div>
+          <div class="assess-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="assess-progress-bar" aria-label="Assessment progress"></div>
+        </div>
+
+        <div id="assess-scrollers" class="assess-scrollers" hidden>
+          <div class="assess-category-list" id="assess-category-list" role="tablist" aria-label="Assessment sections"></div>
+          <div id="assess-question-panel" class="assess-question-panel" role="tabpanel"></div>
+        </div>
+
+        <div class="assess-nav" id="assess-nav" hidden>
+          <button type="button" id="assess-prev-btn" class="secondary">← Previous</button>
+          <button type="button" id="assess-next-btn" class="secondary">Next →</button>
+          <button type="button" id="assess-save-btn" class="secondary">Save</button>
+          <p id="assess-validation-message" class="assess-validation" role="alert" hidden></p>
+        </div>
+
+        <div id="assessment-summary" class="assessment-summary" hidden></div>
+      </div>
+    </section>
+
+    <section id="panel-dashboard" class="panel" data-panel="dashboard" aria-labelledby="dashboard-title" hidden>
+      <div class="card">
+        <h2 id="dashboard-title">Your readiness dashboard</h2>
+        <p class="muted">A supportive snapshot of your business today. There is always a next step worth taking.</p>
+      </div>
+      <div id="dashboard-body"></div>
+    </section>
+
+    <section id="panel-action-plan" class="panel" data-panel="action-plan" aria-labelledby="actionplan-title" hidden>
+      <div class="card">
+        <h2 id="actionplan-title">Your action plan</h2>
+        <p class="muted">
+          Turn recommendations into actions you can track. Short-term priorities (next 30–90 days) build towards
+          longer-term goals (6–12 months) shown in the roadmap.
+        </p>
+        <button type="button" id="action-add-btn" class="primary">＋ Add an action</button>
+      </div>
+      <div id="actions-list" class="actions-list"></div>
+      <div id="action-editor-host"></div>
+    </section>
+
+    <section id="panel-roadmap" class="panel" data-panel="roadmap" aria-labelledby="roadmap-title" hidden>
+      <div class="card">
+        <h2 id="roadmap-title">Resilience roadmap</h2>
+        <p class="muted">
+          Immediate priorities for the next 30–90 days and resilience goals for the next 6–12 months. Every short-term
+          priority links to at least one longer-term objective.
+        </p>
+      </div>
+      <div id="roadmap-body"></div>
+    </section>
+
+    <section id="panel-scenarios" class="panel" data-panel="scenarios" aria-labelledby="scenarios-title" hidden>
+      <div class="card">
+        <h2 id="scenarios-title">Resilience scenarios</h2>
+        <p class="muted">
+          Optional "what if" preparation. Each scenario is a short set of questions you answer once — your answers
+          become a ready plan if the moment ever comes.
+        </p>
+      </div>
+      <div id="scenarios-list"></div>
+    </section>
+
+    <section id="panel-progress" class="panel" data-panel="progress" aria-labelledby="progress-title" hidden>
+      <div class="card">
+        <h2 id="progress-title">Your progress</h2>
+        <p class="muted">See how far you have come and when to reassess. Comparisons appear once at least two assessments are saved.</p>
+      </div>
+      <div id="progress-body"></div>
+    </section>
+
+    <details id="analyze" class="analyze card">
+      <summary>🧠 Score assist — optional on-device AI (optional)</summary>
       <div class="analyze-body">
         <p class="analyze-note">
-          Upload a business document (text, CSV, or JSON) and an on-device model
-          suggests a score for each category, with its reasoning. Nothing is
-          uploaded — the model runs entirely in your browser (the first run
-          downloads it once, then it is cached). Suggestions are never applied
-          automatically; you review them first.
+          Upload a short business document (text, CSV, or JSON) and an on-device model suggests a score for each
+          assessment area, with its reasoning. Nothing is uploaded — the model runs entirely in your browser (the
+          first run downloads it once, then it is cached). Suggestions are never applied automatically; you review
+          them first.
         </p>
         <div class="analyze-toolbar">
           <input type="file" id="analyze-file"
@@ -42,45 +146,50 @@
       </div>
     </details>
 
-    <form id="assessment-form" autocomplete="off"></form>
-
-    <div class="actions">
-      <button id="evaluate-btn" type="button">Evaluate My Business</button>
-      <button id="submit-btn" type="button" class="secondary">📤 Submit results</button>
-      <button id="export-btn" type="button" class="secondary">Export Results</button>
-      <button id="print-btn" type="button" class="secondary">🖨️ Print / Save as PDF</button>
-      <button id="reset-btn" type="button" class="danger">Reset</button>
-    </div>
-
-    <div id="print-header" aria-hidden="true">
-      <h1>Business Self-Evaluation Report</h1>
-      <p id="print-generated"></p>
-    </div>
-
-    <section id="results"></section>
-    <section id="embed-container"></section>
-
-    <section id="history" class="history">
-      <div class="history-toolbar">
-        <button id="save-snapshot-btn" type="button" class="secondary">💾 Save snapshot</button>
-        <button id="export-history-btn" type="button" class="secondary">⬇️ Export history</button>
-        <button id="import-history-btn" type="button" class="secondary">⬆️ Import history</button>
-        <input type="file" id="import-history-file" accept="application/json" hidden />
+    <section id="panel-data" class="panel" data-panel="data" aria-labelledby="data-title">
+      <div class="card">
+        <h2 id="data-title">Backup &amp; restore</h2>
+        <p class="muted">
+          Export a full backup of everything in this Coach (profile, answers, actions, scenarios, and history) as a
+          JSON file, and restore it later on this device.
+        </p>
+        <div class="data-actions">
+          <button type="button" id="export-all-btn" class="primary">⬇️ Export backup (JSON)</button>
+          <button type="button" id="import-all-btn" class="secondary">⬆️ Restore from backup</button>
+          <input type="file" id="import-all-file" accept="application/json" hidden />
+          <button type="button" id="print-report-btn" class="secondary">🖨️ Print report</button>
+          <button type="button" id="export-text-btn" class="secondary">Export results (.txt)</button>
+          <button type="button" id="reset-all-btn" class="danger">Start over</button>
+        </div>
+        <p id="data-status" class="muted" aria-live="polite"></p>
+        <p class="privacy-note">
+          🔒 <strong>Privacy:</strong> everything you enter is stored in this browser only
+          (localStorage). No account, no server, no analytics, no tracking. The optional on-device AI downloads a
+          model file once and runs entirely on this device. To remove everything, use "Start over" or clear this
+          site's data in your browser settings.
+        </p>
       </div>
-      <div id="history-list"></div>
-      <div id="compare-view" hidden></div>
     </section>
   </main>
 
-  <footer>
-    <p>Everything runs in your browser — your answers and any uploaded documents
-      never leave your machine. (The optional on-device analyzer downloads its
-      model once, then runs locally.)</p>
+  <footer class="app-footer">
+    <p>
+      Everything runs in your browser — your profile, answers, actions, and any uploaded documents stay on this
+      device. The optional on-device score assist downloads its model once, then runs locally.
+    </p>
   </footer>
 
+  <div id="print-header" aria-hidden="true">
+    <h1>Business Growth &amp; Resilience Report</h1>
+    <p id="print-generated"></p>
+  </div>
+
   <script src="js/data.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/storage.js"></script>
   <script src="js/analyzer-parse.js"></script>
   <script src="js/analyzer.js"></script>
+  <script src="js/managed.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
