@@ -8,7 +8,7 @@ import {
   parseEvaluationJson,
   parseEvaluationsJson,
 } from '../lib/io'
-import { computeScore } from '../lib/scoring'
+import { classify, computeScore } from '../lib/scoring'
 import { createSampleEvaluation } from '../lib/sample'
 import { answersForCategory, makeEvaluation } from '../test/fixtures'
 
@@ -81,8 +81,8 @@ describe('CSV export', () => {
 
   it('includes the classification for the sample evaluation', () => {
     const sample = createSampleEvaluation()
-    const scores = { [sample.id]: computeScore(sample.answers) }
-    const csv = evaluationsToCsv([sample], scores)
-    expect(csv).toContain('Promising but needs improvement')
+    const score = computeScore(sample.answers)
+    const csv = evaluationsToCsv([sample], { [sample.id]: score })
+    expect(csv).toContain(classify(score.overall).name)
   })
 })

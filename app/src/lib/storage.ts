@@ -1,4 +1,4 @@
-import type { Evaluation } from '../types'
+import type { Evaluation, QuoteSnapshot } from '../types'
 
 export interface StorageProvider {
   getItem(key: string): string | null
@@ -70,7 +70,7 @@ function isEvaluation(value: unknown): value is Evaluation {
 }
 
 function withDefaults(e: Evaluation): Evaluation {
-  return {
+  const base: Evaluation = {
     id: e.id,
     name: e.name || 'Untitled evaluation',
     createdAt: e.createdAt || new Date().toISOString(),
@@ -89,6 +89,28 @@ function withDefaults(e: Evaluation): Evaluation {
     },
     answers: e.answers,
   }
+  // Only carry a frozen quotation through if it is structurally intact.
+  if (isQuoteSnapshot(e.quoteSnapshot)) {
+    base.quoteSnapshot = e.quoteSnapshot
+  }
+  return base
+}
+
+function isQuoteSnapshot(value: unknown): value is QuoteSnapshot {
+  if (typeof value !== 'object' || value == null) return false
+  const obj = value as Record<string, unknown>
+  return (
+    typeof obj.number === 'string' &&
+    typeof obj.issuedAt === 'string' &&
+    typeof obj.evaluationUpdatedAt === 'string' &&
+    typeof obj.validUntil === 'string' &&
+    typeof obj.total === 'number' &&
+    typeof obj.tierDiscountPct === 'number' &&
+    typeof obj.sequentialWeeks === 'number' &&
+    typeof obj.parallelWeeks === 'number' &&
+    typeof obj.parallelism === 'number' &&
+    Array.isArray(obj.lines)
+  )
 }
 
 function persist(list: Evaluation[], provider: StorageProvider): void {
@@ -100,8 +122,36 @@ export function upsertEvaluation(
   item: Evaluation,
   provider: StorageProvider = browserStorage,
 ): Evaluation[] {
+  return storeEvaluation(
+    list,
+    { ...item, updatedAt: new Date().toISOString() },
+    provider,
+  )
+}
+
+/**
+ * Save an evaluation *without* moving `updatedAt`.
+ *
+ * `updatedAt` means "when did the answers last change?", which is what quote
+ * staleness is measured against. Attaching or detaching a frozen quote does not
+ * change any answer, so it must not bump that stamp — otherwise a quote is
+ * reported stale the instant it is created.
+ */
+export function upsertEvaluationMeta(
+  list: Evaluation[],
+  item: Evaluation,
+  provider: StorageProvider = browserStorage,
+): Evaluation[] {
+  return storeEvaluation(list, item, provider)
+}
+
+function storeEvaluation(
+  list: Evaluation[],
+  item: Evaluation,
+  provider: StorageProvider,
+): Evaluation[] {
   const next = list.some((e) => e.id === item.id)
-    ? list.map((e) => (e.id === item.id ? { ...item, updatedAt: new Date().toISOString() } : e))
+    ? list.map((e) => (e.id === item.id ? item : e))
     : [...list, item]
   persist(next, provider)
   return next
@@ -147,6 +197,8 @@ export function duplicateEvaluation(
     answers: JSON.parse(JSON.stringify(source.answers)),
     profile: { ...source.profile },
   }
+  // A quotation is issued against one evaluation; the copy starts unfrozen.
+  delete copy.quoteSnapshot
   const next = [...list, copy]
   persist(next, provider)
   return next

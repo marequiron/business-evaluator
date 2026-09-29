@@ -5,6 +5,7 @@ import { PresentationMode } from '../components/PresentationMode'
 import { computeScore, classify } from '../lib/scoring'
 import { buildReport } from '../lib/recommendations'
 import { createSampleEvaluation } from '../lib/sample'
+import { BUSINESS_PARAMETERS, PRODUCTS } from '../lib/catalog'
 
 function renderPresentation() {
   const evaluation = createSampleEvaluation()
@@ -12,7 +13,14 @@ function renderPresentation() {
   const report = buildReport(evaluation, score)
   const onExit = vi.fn()
   const utils = render(
-    <PresentationMode evaluation={evaluation} score={score} report={report} onExit={onExit} />,
+    <PresentationMode
+      evaluation={evaluation}
+      score={score}
+      report={report}
+      params={BUSINESS_PARAMETERS}
+      catalog={PRODUCTS}
+      onExit={onExit}
+    />,
   )
   return { onExit, evaluation, score, report, ...utils }
 }
@@ -24,7 +32,7 @@ describe('presentation mode', () => {
     expect(
       screen.getAllByRole('heading', { name: 'FreshNest Meal Kits' }).length,
     ).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/Slide 1 of 11/)).toBeInTheDocument()
+    expect(screen.getByText(/Slide 1 of 12/)).toBeInTheDocument()
   })
 
   it('moves forward and backward through the slides', async () => {
@@ -51,6 +59,9 @@ describe('presentation mode', () => {
     await user.click(screen.getByRole('button', { name: 'Next' })) // score
     expect(screen.getByText(String(score.overall))).toBeInTheDocument()
     expect(screen.getByText(classify(score.overall).name)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Next' })) // what it costs
+    expect(screen.getByText('What it costs')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Next' })) // strengths
     expect(screen.getByText('Top strengths')).toBeInTheDocument()

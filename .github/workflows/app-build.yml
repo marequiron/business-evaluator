@@ -37,6 +37,12 @@ jobs:
         run: |
           npm ci
           npm test
+      - name: Build the React app so the desktop bundle can be checked
+        run: |
+          npm ci --prefix app
+          npm run app:sync
+      - name: Assert the desktop bundle is React, not the legacy shell
+        run: node test/app.smoke.test.js
 
   build:
     name: Build (${{ matrix.platform }})
@@ -71,6 +77,11 @@ jobs:
             librsvg2-dev rpm
       - name: Install front-end deps
         run: npm ci
+      # tauri.conf.json's beforeBuildCommand runs `npm run app:sync`, which builds
+      # app/ itself — so app/node_modules must exist or the desktop build fails
+      # on a clean runner.
+      - name: Install React app deps
+        run: npm ci --prefix app
       - name: Build the app, draft a Release with artifacts
         uses: tauri-apps/tauri-action@v0
         env:

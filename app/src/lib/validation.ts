@@ -1,4 +1,5 @@
 import type { Profile } from '../types'
+import { parseMoney } from './money'
 
 export type ProfileErrorKey = keyof Profile
 
@@ -12,14 +13,6 @@ function required(value: string, min: number, label: string): string | undefined
   if (length === 0) return label + ' is required.'
   if (length < min) return label + ' needs at least ' + min + ' characters.'
   return undefined
-}
-
-export function parseStartupCost(input: string): number | null {
-  const trimmed = input.trim()
-  if (trimmed === '') return null
-  const n = Number(trimmed.replace(/,/g, '').replace(/[$€£¥]/, ''))
-  if (Number.isNaN(n)) return null
-  return n
 }
 
 export function validateProfile(profile: Profile): ProfileValidation {
@@ -46,7 +39,7 @@ export function validateProfile(profile: Profile): ProfileValidation {
   const revenueErr = required(profile.revenueModel, 5, 'Revenue model')
   if (revenueErr) errors.revenueModel = revenueErr
 
-  const cost = parseStartupCost(profile.startupCost)
+  const cost = parseMoney(profile.startupCost)
   if (profile.startupCost.trim() === '') {
     errors.startupCost = 'Estimated startup cost is required.'
   } else if (cost == null) {

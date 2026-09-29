@@ -60,9 +60,9 @@ export const PROFILE_FIELDS: ProfileField[] = [
   },
   {
     key: 'startupCost',
-    label: 'Estimated startup cost',
-    placeholder: 'e.g. 25000',
-    help: 'Your realistic estimate of cash needed to launch. Numbers only.',
+    label: 'Estimated startup cost (PHP)',
+    placeholder: 'e.g. 250000',
+    help: 'Your realistic estimate of cash needed to launch, in pesos. Numbers only.',
     type: 'cost',
   },
   {

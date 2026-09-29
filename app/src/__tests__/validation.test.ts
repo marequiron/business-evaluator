@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseStartupCost, validateProfile } from '../lib/validation'
+import { validateProfile } from '../lib/validation'
 import { EMPTY_PROFILE } from '../types'
 import { SAMPLE_PROFILE } from '../lib/sample'
 
@@ -32,12 +32,10 @@ describe('validation', () => {
     expect(result.errors.startupCost).toContain('negative')
   })
 
-  it('accepts currency-formatted and comma-separated costs', () => {
-    expect(parseStartupCost('25,000')).toBe(25000)
-    expect(parseStartupCost('€12500')).toBe(12500)
-    expect(parseStartupCost('$1,200.50')).toBe(1200.5)
-    expect(parseStartupCost('')).toBeNull()
-    expect(parseStartupCost('abc')).toBeNull()
+  it('accepts a peso-prefixed startup cost', () => {
+    const result = validateProfile({ ...SAMPLE_PROFILE, startupCost: '₱250,000' })
+    expect(result.valid).toBe(true)
+    expect(result.errors.startupCost).toBeUndefined()
   })
 
   it('reports the first short field with a helpful minimum-length message', () => {

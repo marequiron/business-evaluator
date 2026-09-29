@@ -31,6 +31,46 @@ export interface AnswerValue {
 
 export type Answers = Record<string, AnswerValue>
 
+export interface QuoteSnapshotLine {
+  productId: string
+  name: string
+  summary: string
+  price: number
+  durationWeeks: number
+  deliverables: string[]
+}
+
+/**
+ * A frozen, numbered proposal. The live quote is always derived from the
+ * current answers; this captures the numbers at a point in time so a price
+ * sent to a client cannot drift afterwards.
+ */
+export interface QuoteSnapshot {
+  number: string
+  evaluationId: string
+  /**
+   * The evaluation's `updatedAt` at the moment of freezing. Staleness is
+   * measured against this rather than `issuedAt` so that attaching the quote
+   * itself never counts as an edit to the answers.
+   */
+  evaluationUpdatedAt: string
+  issuedAt: string
+  validUntil: string
+  currency: string
+  tierName: string
+  /** Recorded rather than back-computed from `discount / subtotal`. */
+  tierDiscountPct: number
+  overall: number
+  /** List price, before the tier discount. */
+  subtotal: number
+  discount: number
+  total: number
+  sequentialWeeks: number
+  parallelWeeks: number
+  parallelism: number
+  lines: QuoteSnapshotLine[]
+}
+
 export interface Evaluation {
   id: string
   name: string
@@ -38,6 +78,16 @@ export interface Evaluation {
   updatedAt: string
   profile: Profile
   answers: Answers
+  /** Absent until the user explicitly freezes a quotation. */
+  quoteSnapshot?: QuoteSnapshot
 }
 
-export type View = 'welcome' | 'profile' | 'wizard' | 'results' | 'presentation' | 'manager'
+export type View =
+  | 'welcome'
+  | 'profile'
+  | 'wizard'
+  | 'results'
+  | 'quote'
+  | 'presentation'
+  | 'manager'
+  | 'ratecard'

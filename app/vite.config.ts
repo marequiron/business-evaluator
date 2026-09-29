@@ -3,10 +3,17 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
+// The desktop (Tauri) build must not ship a service worker. Inside a webview a
+// precaching SW can serve a stale bundle from cache, which presents as "the app
+// is still the old build" — the exact failure the desktop build is being fixed
+// for. `DESKTOP_BUILD=1` is set by scripts/sync-app.mjs.
+const isDesktopBuild = process.env.DESKTOP_BUILD === '1'
+
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      disable: isDesktopBuild,
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png'],

@@ -2,7 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Profile } from '../types'
 import { PROFILE_FIELDS } from '../lib/profileFields'
-import { parseStartupCost, validateProfile } from '../lib/validation'
+import { formatMoney, parseMoney } from '../lib/money'
+import { validateProfile } from '../lib/validation'
 
 interface Props {
   profile: Profile
@@ -113,7 +114,7 @@ export function ProfileForm({ profile, businessName, onChange, onNext, onBack }:
           </p>
         ) : null}
 
-        <CostSummary cost={parseStartupCost(profile.startupCost)} />
+        <CostSummary cost={parseMoney(profile.startupCost)} />
 
         <div className="form-actions">
           <button type="button" className="secondary" onClick={onBack}>
@@ -132,15 +133,7 @@ function CostSummary({ cost }: { cost: number | null }) {
   if (cost == null) return null
   return (
     <p className="hint">
-      Startup cost entered: {formatCost(cost)}
+      Startup cost entered: {formatMoney(cost)}
     </p>
   )
-}
-
-function formatCost(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(value)
 }

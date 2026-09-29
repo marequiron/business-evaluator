@@ -1,7 +1,8 @@
-import type { Evaluation, Profile } from '../types'
+import type { Evaluation, Profile, QuoteSnapshot } from '../types'
 import { CATEGORIES } from './questions'
-import { answerLabel, answerKey } from './scoring'
+import { answerLabel, answerKey, classify } from './scoring'
 import type { EvaluationScore } from './scoring'
+import type { Quote } from './quote'
 
 export interface JsonDocument {
   format: 'business-evaluator'
@@ -161,20 +162,13 @@ export function evaluationsToCsv(
           raw?.note ?? '',
           catScore ? String(catScore.score100) : '',
           score ? String(score.overall) : '',
-          score ? classifyName(score.overall) : '',
+          score ? classify(score.overall).name : '',
         ])
       })
     }
   }
 
   return csvRowsToText(rows)
-}
-
-function classifyName(overall: number): string {
-  if (overall < 40) return 'Early concept requiring validation'
-  if (overall < 60) return 'Promising but needs improvement'
-  if (overall < 80) return 'Strong concept with manageable gaps'
-  return 'Presentation-ready concept requiring continued validation'
 }
 
 export function downloadTextFile(filename: string, content: string, mime = 'text/plain'): void {
@@ -187,4 +181,76 @@ export function downloadTextFile(filename: string, content: string, mime = 'text
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+/**
+ * Line-item CSV for a live quote. Locked items are included on purpose —
+ * a client seeing the roadmap is the whole point of the locked-quote design.
+ */
+export function quoteToCsv(quote: Quote, businessName: string): string {
+  const header = [
+    'Quotation Number',
+    'Business',
+    'Overall Score (0-100)',
+    'Tier',
+    'Service',
+    'Category',
+    'List Price (PHP)',
+    'Duration (weeks)',
+    'Available',
+    'Unlock Condition',
+    'List Price Total (PHP)',
+    'Discount %',
+    'Discount (PHP)',
+    'Total (PHP)',
+    'Sequential Weeks',
+    'Parallel Weeks',
+    'Services In Parallel',
+    'Issued At',
+    'Valid Until',
+  ]
+
+  const rows: string[][] = [header]
+
+  for (const line of quote.lines) {
+    rows.push([
+      quote.number,
+      businessName,
+      String(quote.overall),
+      quote.tier.name,
+      line.product.name,
+      line.weakestCategoryLabel,
+      String(line.product.price),
+      String(line.product.durationWeeks),
+      line.eligible ? 'Yes' : 'No',
+      line.reason,
+      String(quote.subtotal),
+      String(quote.tier.discountPct),
+      String(quote.discount),
+      String(quote.total),
+      String(quote.sequentialWeeks),
+      String(quote.parallelWeeks),
+      String(quote.parallelism),
+      quote.issuedAt,
+      quote.validUntil,
+    ])
+  }
+
+  return csvRowsToText(rows)
+}
+
+export function quoteSnapshotToJson(
+  snapshot: QuoteSnapshot,
+  businessName: string,
+): string {
+  return JSON.stringify(
+    {
+      format: 'business-evaluator-quotation',
+      version: 1,
+      businessName,
+      ...snapshot,
+    },
+    null,
+    2,
+  )
 }

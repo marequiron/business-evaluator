@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import type { Answers, Evaluation, Profile, View } from './types'
+import type { Answers, Evaluation, Profile, QuoteSnapshot, View } from './types'
 import {
   browserStorage,
   deleteEvaluation,
@@ -9,10 +9,20 @@ import {
   newEvaluation,
   renameEvaluation,
   upsertEvaluation,
+  upsertEvaluationMeta,
 } from './lib/storage'
 import { createSampleEvaluation } from './lib/sample'
+import {
+  clearRateCard,
+  defaultRateCard,
+  isRateCardCustomised,
+  loadRateCard,
+  saveRateCard,
+} from './lib/ratecard'
+import type { RateCard } from './lib/ratecard'
 import { computeScore } from './lib/scoring'
 import { buildReport } from './lib/recommendations'
+import type { Quote } from './lib/quote'
 import {
   downloadTextFile,
   evaluationToJson,
@@ -20,17 +30,22 @@ import {
   evaluationsToJson,
   importEvaluations,
   parseEvaluationsJson,
+  quoteSnapshotToJson,
+  quoteToCsv,
 } from './lib/io'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { WelcomeScreen } from './components/WelcomeScreen'
 import { ProfileForm } from './components/ProfileForm'
 import { Wizard } from './components/Wizard'
 import { ResultsDashboard } from './components/ResultsDashboard'
+import { QuoteView } from './components/QuoteView'
 import { PresentationMode } from './components/PresentationMode'
 import { EvaluationManager } from './components/EvaluationManager'
+import { RateCardView } from './components/RateCardView'
 
 export default function App() {
   const [evaluations, setEvaluations] = useState<Evaluation[]>(() => loadAll(browserStorage))
+  const [rateCard, setRateCard] = useState<RateCard>(() => loadRateCard(browserStorage))
   const [activeId, setActiveId] = useState<string | null>(null)
   const [view, setView] = useState<View>('welcome')
 
@@ -116,6 +131,53 @@ export default function App() {
     return incoming.length
   }, [])
 
+  const handleFreezeQuote = useCallback(
+    (snapshot: QuoteSnapshot) => {
+      if (!active) return
+      const next: Evaluation = { ...active, quoteSnapshot: snapshot }
+      // Metadata save: freezing must not move `updatedAt`, or the quote it just
+      // wrote would immediately be reported as stale.
+      setEvaluations((prev) => upsertEvaluationMeta(prev, next))
+    },
+    [active],
+  )
+
+  const handleClearFreeze = useCallback(() => {
+    if (!active) return
+    const next: Evaluation = { ...active }
+    delete next.quoteSnapshot
+    setEvaluations((prev) => upsertEvaluationMeta(prev, next))
+  }, [active])
+
+  const handleSaveRateCard = useCallback((card: RateCard) => {
+    saveRateCard(card)
+    setRateCard(loadRateCard(browserStorage))
+  }, [])
+
+  const handleResetRateCard = useCallback(() => {
+    clearRateCard()
+    setRateCard(defaultRateCard())
+  }, [])
+
+  const handleExportQuoteCsv = useCallback(
+    (quote: Quote) => {
+      if (!active) return
+      const name = active.profile.businessName || active.name
+      downloadTextFile(safeFileName(name) + '-quotation.csv', quoteToCsv(quote, name), 'text/csv')
+    },
+    [active],
+  )
+
+  const handleExportQuoteJson = useCallback(() => {
+    if (!active || !active.quoteSnapshot) return
+    const name = active.profile.businessName || active.name
+    downloadTextFile(
+      safeFileName(name) + '-quotation.json',
+      quoteSnapshotToJson(active.quoteSnapshot, name),
+      'application/json',
+    )
+  }, [active])
+
   const handleExportAllJson = useCallback(() => {
     downloadTextFile('business-evaluations.json', evaluationsToJson(evaluations), 'application/json')
   }, [evaluations])
@@ -182,6 +244,7 @@ export default function App() {
             onPresentation={() => setView('presentation')}
             onEditAnswers={() => setView('wizard')}
             onExportCsv={handleExportActiveCsv}
+            onViewQuotation={() => setView('quote')}
           />
         )
       }
@@ -194,10 +257,40 @@ export default function App() {
             evaluation={active}
             score={activeScore}
             report={activeReport}
+            params={rateCard.params}
+            catalog={rateCard.products}
             onExit={() => setView('results')}
           />
         )
       }
+      case 'quote': {
+        if (!active) {
+          return <NoActiveEvaluation onHome={() => setView('welcome')} />
+        }
+        return (
+          <QuoteView
+            evaluation={active}
+            params={rateCard.params}
+            catalog={rateCard.products}
+            onFreeze={handleFreezeQuote}
+            onClearFreeze={handleClearFreeze}
+            onBack={() => setView('results')}
+            onPrint={() => window.print()}
+            onExportCsv={handleExportQuoteCsv}
+            onExportJson={handleExportQuoteJson}
+          />
+        )
+      }
+      case 'ratecard':
+        return (
+          <RateCardView
+            card={rateCard}
+            customised={isRateCardCustomised(rateCard)}
+            onSave={handleSaveRateCard}
+            onReset={handleResetRateCard}
+            onBack={() => setView('welcome')}
+          />
+        )
       case 'manager':
         return (
           <EvaluationManager
@@ -253,6 +346,14 @@ export default function App() {
           </button>
           <button type="button" className="nav-link" onClick={() => setView('manager')}>
             My evaluations
+          </button>
+          <button type="button" className="nav-link" onClick={() => setView('ratecard')}>
+            Rate card
+            {isRateCardCustomised(rateCard) ? (
+              <span className="nav-badge" title="Customised from the shipped defaults">
+                edited
+              </span>
+            ) : null}
           </button>
           {active ? (
             <span className="nav-active" title="Active evaluation">

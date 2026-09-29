@@ -95,6 +95,106 @@ HTML/CSS/JS so it's easy to run, deploy (e.g., GitHub Pages), and extend.
   front end stays fully static — the requested server only exists here, in a
   separate folder, and is not deployed yet.
 
+## The React app (`app/`) — read this too
+
+**This repository contains two independent applications.** Everything above
+describes the legacy vanilla-JS app at the repo root, which is what is
+committed, CI-covered, deployed to Azure SWA, and wrapped in Tauri. The rules
+in "Conventions" (vanilla JS, no bundler) apply **only to that app**.
+
+`app/` is a separate React 19 + TypeScript + Vite + Vitest app with its **own**
+model: **10** weighted categories (not 8), a weighted 0–100 score, and four
+classification bands. It shares **zero** code with the root app. Its commands
+all run from `app/`: `npm run dev`, `npm test`, `npm run typecheck`,
+`npm run lint` (oxlint), `npm run build`, `npm run preview`.
+
+- `app/src/types.ts` — `Profile`, `Answers`, `Evaluation`, `QuoteSnapshot`, `View`
+- `app/src/lib/questions.ts` — the 10 categories, 40 questions
+- `app/src/lib/scoring.ts` — weights, score mapping, `classify()`
+- `app/src/lib/recommendations.ts` — strengths, risks, 30/90-day plan
+- `app/src/lib/money.ts` — **all** currency handling. `parseMoney`,
+  `formatMoney`, `formatMoneyCompact`, `CURRENCY`/`LOCALE` (PHP / en-PH).
+  Never hardcode `Intl.NumberFormat` or a currency symbol elsewhere.
+- `app/src/lib/catalog.ts` — **the commercial offer.** `Product` and
+  `BusinessParameters` (entry gate, tiers, discounts, validity) plus the
+  `PRODUCTS` rate card. Content only, no logic. **Prices are placeholders.**
+- `app/src/lib/quote.ts` — the quotation engine. `buildQuote()` is pure and
+  derives every line from the current answers. `freezeQuote(quote, evaluation)`
+  produces a numbered, dated proposal. A quote is never stored as a source of
+  truth.
+- `app/src/lib/storage.ts` — localStorage persistence. `withDefaults()` carries
+  a valid `quoteSnapshot` through and silently drops a malformed one. Use
+  `upsertEvaluationMeta()` (not `upsertEvaluation()`) for saves that only attach
+  or detach a quote, so `updatedAt` — which quote staleness is measured against —
+  does not move.
+- `app/src/components/QuoteView.tsx` — live quote and frozen proposal panels
+- `app/src/lib/io.ts` — JSON/CSV import-export, plus `quoteToCsv` and
+  `quoteSnapshotToJson`
+- `app/src/index.css` — all styling, design tokens at the top, `@media print`
+  reveals **only** `#report-root`. Any new printable view must wrap itself in
+  `<div id="report-root">` or it will print blank. Because that container is
+  forced visible, a toolbar placed *inside* it (the quotation's action row is)
+  needs its own `@media print { display: none }` rule or it prints as buttons.
+
+Conventions for `app/`: keep pure logic in `app/src/lib/*.ts` (DOM-free, no
+mocks) and presentation in `app/src/components/*.tsx`; every new `View` needs a
+case in `App.tsx`'s `renderView()` plus a test; accessibility is deliberate
+(`aria-live`, `aria-disabled` with a visible reason, `.sr-only`, fieldset/legend)
+— match it.
+
+> **Known pre-existing mismatch, not yet fixed:** `api/src/validate.js` hardcodes
+> `REQUIRED_CATEGORY_COUNT = 8` (and `api/test/submit.test.js` pins 8-category
+> fixtures) while this app has **10** categories. The two apps have never agreed.
+> Nothing in the quotation feature touches `api/`, so this is out of scope for
+> that work — but any future submit/persist-to-server integration must fix it
+> first.
+
+### The quotation model, in one paragraph
+
+Products are linked to scoring categories. A line is quotable only if the
+overall score clears `minOverallToQuote` (the **entry gate**) **and** every
+category the product links to clears that product's `minCategory` (the
+**product gate**). A locked line is **never hidden** — it is shown with the
+exact condition that unlocks it, because a wall reads as a rejection and a goal
+reads as work to do. The overall score also selects a discount tier. Freezing is
+optional and explicit; it captures the numbers so a price sent to a client
+cannot drift, and the UI flags the quote as stale if answers change afterwards.
+
+### The rate card and the delivery timeline
+
+`app/src/lib/catalog.ts` holds the **shipped defaults**; they are not the
+source of truth at runtime. `app/src/lib/ratecard.ts` owns the live card:
+`loadRateCard()` merges the user's saved overrides onto the shipped catalog by
+**product id** and tier id, so a catalog change in a later release adds new
+products and new tier fields without discarding edits or misapplying them
+(reordering tiers is safe). `saveRateCard()`/`clearRateCard()` round-trip it
+through a `StorageProvider`, which is what makes the logic testable. Everything
+in `ratecard.ts` is DOM-free and pure; the editor is `RateCardView.tsx`.
+
+Three rules the editor depends on:
+- **Validation is pure and separate from the form.** `validateRateCard()` returns
+  an error map keyed by `product.<id>.<field>`; the view only decides *when* to
+  reveal it. Add a rule there and it is testable without rendering.
+- **An empty numeric box is NaN, never 0.** `Number('')` is `0`, which would turn
+  a cleared price into a free service. `numberFrom()` in `RateCardView.tsx`
+  returns NaN so validation can report the field.
+- **Editing the rate card never touches a frozen proposal.** A snapshot holds
+  the prices, copy and tier that were issued; `App.tsx` re-renders the quote
+  from the live card, but a frozen panel reads only from its snapshot.
+
+The quotation states **two** durations, not one: `sequentialWeeks()` is the plain
+sum, and `parallelWeeks()` packs services into `params.parallelism` concurrent
+streams using longest-processing-time, returning the busiest stream. That is
+deliberately pessimistic — a 12-week engagement cannot be compressed by running
+other work beside it, which is exactly what a naive `total / parallelism` gets
+wrong. There is a test pinning that case. `parallelism` is an *assumption about
+delivery*, shown to the user as such; it never changes a price.
+
+When a tier discount applies, the list price is struck through with a real
+`<s>` element and the reduction is named, rather than only being colour-coded.
+At 0% there is nothing to strike, so the label stays "Subtotal" — see
+`quote-view.test.tsx` for both branches.
+
 ## Conventions
 - Vanilla JS only (no framework, no bundler). Keep it dependency-free unless
   explicitly asked to add a library — the whole point is zero-install-friction.
@@ -157,7 +257,34 @@ npm test               # node test/*.test.js (analyzer, smoke, managed, localaut
   - Keep out-of-process/durable rate limiting as the documented requirement
     before scaling the API horizontally.
 
-## Common tasks you (opencode) may be asked to do here
+## Common tasks (you / opencode may be asked to do here)
+
+### In the React app (`app/`)
+- Change a product, price, or quote threshold → `app/src/lib/catalog.ts` only.
+  `Product` fields drive the line item; `BUSINESS_PARAMETERS` drives the entry
+  gate, tiers, discounts, parallelism, and validity window. No component or
+  engine change should be needed. These are **defaults**: edit them to change
+  what a fresh browser sees, and add a test to `sample.test.ts` if the change
+  would move the sample's score, tier, or lock count.
+- Add a new quotable service → add it to `PRODUCTS` in `catalog.ts`. Do **not**
+  touch the merge logic: `mergeRateCard()` picks it up automatically, and a
+  saved card that predates it will still resolve. Deleting or renaming an
+  `id` is a breaking change, because `mergeRateCard()` keys on it.
+- Add a validation rule to the rate card → `validateRateCard()` in
+  `app/src/lib/ratecard.ts`, returning a `RateCardErrorKey`; surface it in
+  `RateCardView.tsx` and pin it in `ratecard.test.ts`.
+- Change the quotation's eligibility logic → `app/src/lib/quote.ts`
+  (`buildLine`, `tierFor`). Keep it pure and DOM-free; add cases to
+  `app/src/__tests__/quote.test.ts`.
+- Change the currency or peso display → `app/src/lib/money.ts`
+  (`CURRENCY`/`LOCALE`). Do not re-introduce a local `formatCost`.
+- Add a quotation export format → extend `quoteToCsv` / `quoteSnapshotToJson`
+  in `app/src/lib/io.ts`, reusing `csvRowsToText()` and `downloadTextFile()`.
+- Change the score bands or classification → `app/src/lib/scoring.ts`
+  (`classify()`). `io.ts` and the UI read the thresholds from there, so there
+  is only one copy.
+
+### In the legacy root app
 - Add a new assessment category or question → edit `js/data.js` only.
   Note: the `api/` validation contract expects exactly **8** categories —
   changing the category count means updating `REQUIRED_CATEGORY_COUNT` in
@@ -241,3 +368,17 @@ npm test               # node test/*.test.js (analyzer, smoke, managed, localaut
 - Do not commit the gitignored local auth secrets/roles
   (`scripts/.github-oauth.json`, `scripts/github-roles.local.json`), and keep
   the `auth:github` server free of stored OAuth tokens.
+- Do not send quotations anywhere. The quotation is a local estimate; exporting
+  to CSV/JSON/PDF is a manual, user-initiated download. Adding an "email this
+  quote" or "request a booking" button would need a backend — confirm first.
+- Do not present a quotation as binding. Keep the "estimate, not a binding
+  offer" disclaimer and the validity date on every client-facing surface.
+- Do not hide a locked quotation line. Always show the unlock condition.
+- Do not present the parallel timeline as a promise. It is an estimate derived
+  from `parallelism`, which the user sets; state the assumption next to the
+  number and keep the sequential total visible as the honest baseline.
+- Do not let a rate-card edit rewrite a frozen proposal. Snapshots are the
+  client's record of what was issued — `app.test.tsx` pins this.
+- Do not add tax or statutory-contribution calculations to the quote; the
+  current terms explicitly exclude them. Adding tax handling is a scope and
+  compliance decision, not a formatting change.

@@ -12,6 +12,7 @@ interface Props {
   onPresentation: () => void
   onEditAnswers: () => void
   onExportCsv: () => void
+  onViewQuotation: () => void
 }
 
 export function ResultsDashboard({
@@ -22,6 +23,7 @@ export function ResultsDashboard({
   onPresentation,
   onEditAnswers,
   onExportCsv,
+  onViewQuotation,
 }: Props) {
   const classification = classify(score.overall)
   const businessName = evaluation.profile.businessName || evaluation.name
@@ -184,6 +186,17 @@ export function ResultsDashboard({
         <div className="results-panel">
           <h2 className="section-title">Next milestone</h2>
           <p>{report.nextStepGoal}</p>
+        </div>
+
+        <div className="results-panel highlight">
+          <h2 className="section-title">What would it cost to close these gaps?</h2>
+          <p>
+            See which services are available for this idea now, which unlock as you score higher,
+            and what the total comes to.
+          </p>
+          <button type="button" className="primary" onClick={onViewQuotation}>
+            View quotation
+          </button>
         </div>
       </div>
 

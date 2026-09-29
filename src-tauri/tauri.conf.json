@@ -5,8 +5,8 @@
 "identifier": "com.businessevaluator.tool",
   "build": {
     "frontendDist": "app-dist",
-    "devUrl": "http://localhost:4173",
-    "beforeDevCommand": "npm run app:sync && npm run local",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm --prefix app run dev",
     "beforeBuildCommand": "npm run app:sync"
   },
   "app": {

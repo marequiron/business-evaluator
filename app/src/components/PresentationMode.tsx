@@ -1,14 +1,19 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { Evaluation } from '../types'
 import { classify } from '../lib/scoring'
 import type { EvaluationScore } from '../lib/scoring'
+import { formatMoney, parseMoney } from '../lib/money'
+import type { BusinessParameters, Product } from '../lib/catalog'
+import { buildQuote } from '../lib/quote'
 import type { Report } from '../lib/recommendations'
 
 interface Props {
   evaluation: Evaluation
   score: EvaluationScore
   report: Report
+  params: BusinessParameters
+  catalog: Product[]
   onExit: () => void
 }
 
@@ -17,10 +22,21 @@ interface Slide {
   body: () => React.ReactNode
 }
 
-export function PresentationMode({ evaluation, score, report, onExit }: Props) {
+export function PresentationMode({
+  evaluation,
+  score,
+  report,
+  params,
+  catalog,
+  onExit,
+}: Props) {
   const [slide, setSlide] = useState(0)
   const classification = classify(score.overall)
   const p = evaluation.profile
+  const quote = useMemo(
+    () => buildQuote(evaluation, score, params, catalog, new Date()),
+    [evaluation, score, params, catalog],
+  )
 
   const slides: Slide[] = [
     {
@@ -72,7 +88,7 @@ export function PresentationMode({ evaluation, score, report, onExit }: Props) {
           <p className="slide-lead">How we make money</p>
           <p>{p.revenueModel || 'Not defined yet.'}</p>
           <p className="slide-lead">Estimated startup cost</p>
-          <p>{p.startupCost ? formatCost(p.startupCost) : 'Not provided yet.'}</p>
+          <p>{formatStartupCost(p.startupCost)}</p>
         </div>
       ),
     },
@@ -88,6 +104,66 @@ export function PresentationMode({ evaluation, score, report, onExit }: Props) {
           </p>
         </div>
       ),
+    },
+    {
+      title: 'What it costs',
+      body: () => {
+        const available = quote.lines.filter((l) => l.eligible)
+        const locked = quote.lines.filter((l) => !l.eligible)
+        const hasDiscount = quote.discount > 0
+        return (
+          <div className="slide-body">
+            {available.length > 0 ? (
+              <>
+                <p className="slide-lead">
+                  Available now · {quote.tier.name} tier
+                  {hasDiscount ? ' · ' + quote.tier.discountPct + '% off' : ''}
+                </p>
+                <p className="big-price">
+                  {hasDiscount ? (
+                    <>
+                      <s className="quote-list-price">{formatMoney(quote.subtotal)}</s>{' '}
+                      {formatMoney(quote.total)}
+                    </>
+                  ) : (
+                    formatMoney(quote.total)
+                  )}
+                </p>
+                <ul className="plain-list">
+                  {available.slice(0, 4).map((l) => (
+                    <li key={l.product.id}>
+                      {l.product.name} - {formatMoney(l.product.price)}
+                    </li>
+                  ))}
+                </ul>
+                <p className="hint">
+                  {quote.sequentialWeeks} weeks of work in total, roughly {quote.parallelWeeks}{' '}
+                  weeks running {quote.parallelism} at a time.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="slide-lead">Nothing is priced yet - and that is the honest answer</p>
+                <p>
+                  This idea has not cleared the {params.minOverallToQuote}-point threshold where
+                  work can be scoped. The services below show exactly what unlocks it.
+                </p>
+              </>
+            )}
+            {locked.length > 0 ? (
+              <>
+                <p className="slide-lead">Unlocks as you strengthen</p>
+                <ul className="plain-list">
+                  {locked.slice(0, 3).map((l) => (
+                    <li key={l.product.id}>{l.product.name}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            <p className="hint">Estimate only, valid for {params.quoteValidDays} days.</p>
+          </div>
+        )
+      },
     },
     {
       title: 'Top strengths',
@@ -239,8 +315,8 @@ export function PresentationMode({ evaluation, score, report, onExit }: Props) {
   )
 }
 
-function formatCost(raw: string): string {
-  const n = Number(raw.replace(/[^0-9.]/gu, ''))
-  if (Number.isNaN(n)) return raw
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+function formatStartupCost(raw: string): string {
+  const value = parseMoney(raw)
+  if (value == null) return raw ? raw : 'Not provided yet.'
+  return formatMoney(value)
 }

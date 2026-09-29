@@ -265,13 +265,52 @@ function submitProfile(w, values) {
     assert.ok(w.document.getElementById('analyze-status-text').textContent.includes('Applied'), 'status should confirm the apply');
   });
 
-  await test('app loaded from the synced bundle also assembles (coach shell)', () => {
+  // The desktop bundle is the React app (app/dist), not this legacy coach shell.
+  // It ships a single empty mount node and a hashed asset bundle; the coach
+  // shell is served by Azure Static Web Apps and `npm run local`, never bundled.
+  //
+  // app-dist/ is gitignored, so this skips when the bundle has not been built
+  // (a fresh clone, or a root-only test run). CI runs `npm run app:sync` first,
+  // so there it always asserts. Skipping beats a false failure on an artifact
+  // the caller never asked for — but a bundle that exists must be correct.
+  await test('desktop bundle is the React app, not the legacy coach shell', () => {
     const dist = path.join(ROOT, 'src-tauri', 'app-dist', 'index.html');
-    assert.ok(fs.existsSync(dist), 'src-tauri/app-dist/index.html must exist (run npm run app:sync)');
-    const html = fs.readFileSync(dist, 'utf8').replace(/<script src="[^"]+"><\/script>/g, '');
+    if (!fs.existsSync(dist)) {
+      console.log('  (skipped: src-tauri/app-dist not built — run `npm run app:sync`)');
+      return;
+    }
+    const html = fs.readFileSync(dist, 'utf8');
+
     const dom = new JSDOM(html, { url: 'http://localhost/index.html', pretendToBeVisual: true });
-    assert.strictEqual(dom.window.document.querySelectorAll('#coach-nav .nav-tab').length, 7);
-    assert.strictEqual(dom.window.document.querySelectorAll('#profile-form').length, 1);
+    assert.strictEqual(dom.window.document.querySelectorAll('#root').length, 1, 'React mount point');
+    assert.strictEqual(
+      dom.window.document.querySelectorAll('#coach-nav').length,
+      0,
+      'legacy coach nav must not be bundled',
+    );
+    assert.strictEqual(
+      dom.window.document.querySelectorAll('#profile-form').length,
+      0,
+      'legacy profile form must not be bundled',
+    );
+
+    const bundle = html.match(/<script[^>]*src="(\/assets\/index-[^"]+\.js)"/);
+    assert.ok(bundle, 'entry HTML must reference a hashed /assets/ bundle');
+    assert.ok(
+      fs.existsSync(path.join(ROOT, 'src-tauri', 'app-dist', bundle[1])),
+      'referenced bundle ' + bundle[1] + ' must exist in app-dist',
+    );
+
+    // A service worker inside a webview serves stale bundles from cache and
+    // presents as a failed deploy. scripts/sync-app.mjs sets DESKTOP_BUILD=1.
+    assert.ok(
+      !fs.existsSync(path.join(ROOT, 'src-tauri', 'app-dist', 'sw.js')),
+      'desktop bundle must not contain a service worker',
+    );
+    assert.ok(
+      !/vite-plugin-pwa:register-sw/.test(html),
+      'desktop entry HTML must not inject the PWA registration script',
+    );
   });
 
   await test('assessment: one category at a time, question radios render per page', () => {
