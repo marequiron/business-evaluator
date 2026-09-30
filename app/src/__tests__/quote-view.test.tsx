@@ -170,6 +170,33 @@ describe('quote view', () => {
     expect(onExportCsv.mock.calls[0][0].lines).toHaveLength(PRODUCTS.length)
   })
 
+  it('lists a locked line in the frozen proposal with its unlock condition', () => {
+    const evaluation = createSampleEvaluation()
+    const score = computeScore(evaluation.answers)
+    const quote = buildQuote(evaluation, score, BUSINESS_PARAMETERS, PRODUCTS)
+    renderQuote({ ...evaluation, quoteSnapshot: freezeQuote(quote, evaluation) })
+    expect(screen.getByText('Available as you progress')).toBeInTheDocument()
+    const locked = document.querySelectorAll('.quote-line-locked')
+    expect(locked.length).toBe(quote.lockedCount)
+    expect(screen.getByText(/Unlocks when/)).toBeInTheDocument()
+  })
+
+  it('treats a snapshot without an eligibility flag as fully quoted', () => {
+    const evaluation = createSampleEvaluation()
+    const score = computeScore(evaluation.answers)
+    const quote = buildQuote(evaluation, score, BUSINESS_PARAMETERS, PRODUCTS)
+    const snapshot = freezeQuote(quote, evaluation)
+    const legacy = {
+      ...snapshot,
+      lines: snapshot.lines
+        .filter((l) => l.eligible !== false)
+        .map((l) => ({ ...l, eligible: undefined, unlockReason: undefined })),
+    }
+    renderQuote({ ...evaluation, quoteSnapshot: legacy })
+    expect(screen.queryByText('Available as you progress')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Quotation number')).toHaveLength(1)
+  })
+
   it('shows the frozen panel instead of the live quote once frozen', () => {
     const evaluation = createSampleEvaluation()
     const score = computeScore(evaluation.answers)

@@ -351,6 +351,10 @@ function FrozenPanel({
   onPrint: () => void
   onExportJson: () => void
 }) {
+  // Snapshots taken before locked lines were captured have no `eligible` flag.
+  // Those stored only quotable lines, so an absent flag means available.
+  const quotedLines = snapshot.lines.filter((l) => l.eligible !== false)
+  const lockedLines = snapshot.lines.filter((l) => l.eligible === false)
   return (
     <>
       <div className="quote-snapshot card">
@@ -376,7 +380,7 @@ function FrozenPanel({
 
       <h2 className="section-title">Quoted services</h2>
       <ul className="quote-lines">
-        {snapshot.lines.map((line) => (
+        {quotedLines.map((line) => (
           <li key={line.productId} className="quote-line">
             <div className="quote-line-head">
               <h3>{line.name}</h3>
@@ -394,6 +398,31 @@ function FrozenPanel({
           </li>
         ))}
       </ul>
+
+      {lockedLines.length > 0 ? (
+        <>
+          <h2 className="section-title">Available as you progress</h2>
+          <p className="hint">
+            These are not priced into this proposal yet. Each one is listed with what would make it
+            available, so nothing here is a rejection.
+          </p>
+          <ul className="quote-lines">
+            {lockedLines.map((line) => (
+              <li key={line.productId} className="quote-line quote-line-locked">
+                <div className="quote-line-head">
+                  <h3>{line.name}</h3>
+                  <span className="quote-line-price">{formatMoney(line.price)}</span>
+                </div>
+                <p className="quote-line-summary">{line.summary}</p>
+                <p className="quote-line-meta">
+                  {line.durationWeeks} {line.durationWeeks === 1 ? 'week' : 'weeks'}
+                </p>
+                <p className="quote-line-state">{line.unlockReason}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
 
       <Totals
         subtotal={snapshot.subtotal}

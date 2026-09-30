@@ -256,16 +256,20 @@ export function freezeQuote(quote: Quote, evaluation: Evaluation): QuoteSnapshot
     sequentialWeeks: quote.sequentialWeeks,
     parallelWeeks: quote.parallelWeeks,
     parallelism: quote.parallelism,
-    lines: quote.lines
-      .filter((l) => l.eligible)
-      .map((l) => ({
-        productId: l.product.id,
-        name: l.product.name,
-        summary: l.product.summary,
-        price: l.product.price,
-        durationWeeks: l.product.durationWeeks,
-        deliverables: l.product.deliverables.slice(),
-      })),
+    // Locked lines are carried through too, marked with the condition that
+    // unlocks them. Dropping them would contradict the live quote, where a
+    // locked line is always shown — a proposal that silently omits work reads
+    // as either a mistake or a judgement on the client.
+    lines: quote.lines.map((l) => ({
+      productId: l.product.id,
+      name: l.product.name,
+      summary: l.product.summary,
+      price: l.product.price,
+      durationWeeks: l.product.durationWeeks,
+      deliverables: l.product.deliverables.slice(),
+      eligible: l.eligible,
+      unlockReason: l.eligible ? undefined : l.reason,
+    })),
   }
 }
 

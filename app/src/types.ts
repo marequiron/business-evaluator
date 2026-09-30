@@ -38,6 +38,18 @@ export interface QuoteSnapshotLine {
   price: number
   durationWeeks: number
   deliverables: string[]
+  /**
+   * Whether this line was quotable when the proposal was issued. `undefined` on
+   * snapshots written before locked lines were captured; treat those as
+   * eligible, since only eligible lines were ever stored then.
+   */
+  eligible?: boolean
+  /**
+   * The client-safe condition that unlocks a locked line. Present only when
+   * `eligible` is false. A locked line is never dropped from the proposal — it
+   * is shown with the work that would make it available.
+   */
+  unlockReason?: string
 }
 
 /**

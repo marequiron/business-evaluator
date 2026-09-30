@@ -65,6 +65,14 @@ Quotes are **derived**, rebuilt on every render, so editing an answer updates th
 price immediately. "Freeze into a proposal" is optional and explicit: it captures
 a numbered, dated snapshot so a price already sent to a client cannot drift.
 
+A frozen proposal carries **every** line, locked ones included, each marked with
+`eligible: false` and the condition that unlocks it, under "Available as you
+progress". Only available lines are priced and only those count toward the
+delivery timeline. Omitting a locked line from an issued proposal would
+contradict the live quote and read as a judgement on the client. Snapshots
+written before this carried only priced lines; a missing `eligible` flag is
+read as available, so old proposals render unchanged.
+
 Staleness is measured against the evaluation's `updatedAt` **as captured at
 freeze time**, not against a wall clock. Attaching the quote is a metadata save
 (`upsertEvaluationMeta`) that deliberately does not move `updatedAt` — otherwise

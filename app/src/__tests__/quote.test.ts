@@ -231,11 +231,31 @@ describe('quote numbering and validity', () => {
 })
 
 describe('freezing a proposal', () => {
-  it('captures only the eligible lines', () => {
+  it('prices nothing when every line is locked, but still lists them', () => {
     const { quote, evaluation } = quoteFor(allStrong(allOnes))
     const snapshot = freezeQuote(quote, evaluation)
-    expect(snapshot.lines).toHaveLength(0)
+    expect(snapshot.lines).toHaveLength(PRODUCTS.length)
+    expect(snapshot.lines.every((l) => l.eligible === false)).toBe(true)
     expect(snapshot.total).toBe(0)
+  })
+
+  it('never drops a locked line from the frozen proposal', () => {
+    const { quote, evaluation } = quoteFor(allStrong())
+    const snapshot = freezeQuote(quote, evaluation)
+    expect(snapshot.lines).toHaveLength(PRODUCTS.length)
+    const locked = snapshot.lines.filter((l) => l.eligible === false)
+    expect(locked).toHaveLength(quote.lockedCount)
+    for (const line of locked) {
+      expect(line.unlockReason ?? '').not.toBe('')
+    }
+  })
+
+  it('leaves no unlock condition on an eligible line', () => {
+    const { quote, evaluation } = quoteFor(allStrong())
+    const snapshot = freezeQuote(quote, evaluation)
+    for (const line of snapshot.lines.filter((l) => l.eligible !== false)) {
+      expect(line.unlockReason).toBeUndefined()
+    }
   })
 
   it('keeps the frozen price even after answers change', () => {
@@ -270,10 +290,11 @@ describe('freezing a proposal', () => {
     expect(snapshot.tierDiscountPct).toBe(quote.tier.discountPct)
     expect(snapshot.parallelism).toBe(quote.parallelism)
     expect(snapshot.parallelWeeks).toBe(quote.parallelWeeks)
-    // A snapshot only carries quotable lines, so the timeline covers exactly
-    // what was priced.
+    // The timeline covers exactly the priced lines, so a locked line adds no
+    // duration to the proposal.
+    const priced = snapshot.lines.filter((l) => l.eligible !== false)
     expect(snapshot.sequentialWeeks).toBe(
-      sequentialWeeks(snapshot.lines.map((l) => l.durationWeeks)),
+      sequentialWeeks(priced.map((l) => l.durationWeeks)),
     )
     expect(sequentialWeeks([])).toBe(0)
   })
