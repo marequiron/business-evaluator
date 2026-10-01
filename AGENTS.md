@@ -142,12 +142,18 @@ case in `App.tsx`'s `renderView()` plus a test; accessibility is deliberate
 (`aria-live`, `aria-disabled` with a visible reason, `.sr-only`, fieldset/legend)
 — match it.
 
-> **Known pre-existing mismatch, not yet fixed:** `api/src/validate.js` hardcodes
-> `REQUIRED_CATEGORY_COUNT = 8` (and `api/test/submit.test.js` pins 8-category
-> fixtures) while this app has **10** categories. The two apps have never agreed.
-> Nothing in the quotation feature touches `api/`, so this is out of scope for
-> that work — but any future submit/persist-to-server integration must fix it
-> first.
+> **The 8-vs-10 category count is NOT a bug — do not "fix" it.**
+> `api/src/validate.js` hardcodes `REQUIRED_CATEGORY_COUNT = 8` and pins 8-category
+> fixtures in `api/test/submit.test.js`, while `app/` has 10 categories. They are
+> not supposed to agree: the API contract belongs to the **legacy root app**
+> (8 categories, 0–5 per-question scores, and the `weakness`/`opportunity`/
+> `strength`/`unanswered` band vocabulary in `ALLOWED_BANDS`). The React app is a
+> separate application, shares no code with the root app, and never calls the
+> API. Bumping the constant to 10 would match neither app. The API is also gated
+> and not deployed.
+>
+> If the React app is ever wired to a server, give it a **new contract and
+> endpoint** with its own validator and tests. Do not reshape the legacy one.
 
 ### The quotation model, in one paragraph
 

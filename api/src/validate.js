@@ -6,13 +6,34 @@
  * Kept separate from the Azure bindings so it can be unit-tested without
  * installing any packages.
  *
- * Contract (mirrors the front-end's buildSubmissionPayload()):
+ * Contract (mirrors the LEGACY root app's buildSubmissionPayload()):
  *   {
  *     language: "simple" | "standard",
  *     categories: [                       // exactly 8, one per assessment category
  *       { id, label, score, band }        // score: number 0-5, or null when band === "unanswered"
  *     ]
  *   }
+ *
+ * NOTE ON THE CATEGORY COUNT (read before "fixing" this).
+ *
+ * REQUIRED_CATEGORY_COUNT is 8 because this contract belongs to the LEGACY
+ * vanilla-JS app at the repo root, which has 8 categories. The React app in
+ * `app/` has 10 categories — but it is a SEPARATE application that shares no
+ * code with the root app and never calls this API. Its own contract is
+ * different in every respect, not just the count:
+ *
+ *   - categories: 10, not 8
+ *   - scores:     0-100 weighted, not 0-5 per-question
+ *   - bands:      4 overall bands, not per-category weakness/opportunity/
+ *                 strength/unanswered
+ *
+ * The band vocabulary above (ALLOWED_BANDS) and the 0-5 score range are both
+ * legacy-only. Changing the count to 10 alone would produce a contract that
+ * matches neither application. This API is also gated and NOT deployed.
+ *
+ * If the React app is ever wired to a server, give it its own contract and
+ * endpoint rather than reshaping this one. See AGENTS.md and
+ * competition/PRODUCT-FACTS.md.
  */
 
 const MAX_BODY_BYTES = 10 * 1024; // 10 KB

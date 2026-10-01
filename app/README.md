@@ -12,7 +12,7 @@ app at the repo root and how the two differ.
 ```bash
 npm install
 npm run dev        # dev server
-npm test           # 114 vitest tests
+npm test           # 185 vitest tests
 npm run typecheck  # tsc -b
 npm run lint       # oxlint
 npm run build      # tsc -b && vite build

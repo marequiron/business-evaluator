@@ -6,6 +6,9 @@ import { buildQuote } from '../lib/quote'
 
 const NOW = new Date('2026-03-01T00:00:00.000Z')
 
+/** The demo's headline number. Pinned below — see the first test. */
+const SAMPLE_SCORE = 65
+
 /*
  * The sample is a demo asset, so its *character* matters as much as its score.
  * These pins exist to fail loudly if a catalog change quietly changes what the
@@ -22,6 +25,10 @@ describe('sample evaluation', () => {
   })
 
   it('lands on the Growth tier so the discount is visible', () => {
+    // The exact score is pinned, not just the tier band. A weight or mapping
+    // change that moves the demo's headline number must fail here, because the
+    // score is quoted in the pitch and in DEMO-SCRIPT.md.
+    expect(score.overall).toBe(SAMPLE_SCORE)
     expect(score.overall).toBeGreaterThanOrEqual(60)
     expect(score.overall).toBeLessThan(80)
     expect(quote.tier.name).toBe('Growth')
