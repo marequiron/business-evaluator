@@ -29,11 +29,11 @@ jobs:
       - name: Install front-end deps
         run: npm ci
       - name: Sync app bundle
-        run: npm run app:sync
+        run: |
+          npm run app:sync
+          test -f src-tauri/app-dist/index.html
       - name: Front-end tests
         run: npm test
-      - name: Test app shell assembly (jsdom smoke)
-        run: npm test -- --smoke-only
       - name: API unit tests
         working-directory: api
         run: |
